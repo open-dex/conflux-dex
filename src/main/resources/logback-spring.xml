@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<configuration>
+	<springProfile name="dev">
+		<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+			<encoder>
+				<pattern>%d %level [%thread] %logger{36} - %msg%n</pattern>
+			</encoder>
+		</appender>
+		
+		<root level="warn">
+			<appender-ref ref="STDOUT"/>
+		</root>
+		
+		<logger name="conflux.dex" level="info"/>
+		<logger name="conflux.dex.service.CleanerService" level="debug"/>
+		<logger name="conflux.dex.service.AbstractCleaner" level="debug"/>
+		<logger name="conflux.dex.service.DeleteOrderWithoutTradeCleaner" level="debug"/>
+		<logger name="conflux.dex.service.TradeAndOrderCleaner" level="debug"/>
+		<logger name="conflux.dex.ws.topic.AccountTopic" level="warn"/>
+	</springProfile>
+	
+	<springProfile name="test">
+		<appender name="FILE" class="ch.qos.logback.core.FileAppender">
+			<file>conflux-dex.log</file>
+			<encoder>
+				<pattern>%d %level [%thread] %logger{36} - %msg%n</pattern>
+			</encoder>
+		</appender>
+		
+		<root level="warn">
+			<appender-ref ref="FILE"/>
+		</root>
+		
+		<logger name="conflux.dex" level="info"/>
+		<logger name="conflux.dex.ws.topic.AccountTopic" level="warn"/>
+	</springProfile>
+	
+	<springProfile name="stage,prod">
+		<appender name="ROLLING_FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+			<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+				<fileNamePattern>logs/all-%d.log.zip</fileNamePattern>
+				<maxHistory>30</maxHistory>
+			</rollingPolicy>
+	
+			<!-- triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy"> 
+				<maxFileSize>5MB</maxFileSize>
+			</triggeringPolicy -->
+	
+			<encoder>
+				<pattern>%d %level [%thread] %logger{36} - %msg%n</pattern>
+			</encoder>
+		</appender>
+		
+		<appender name="ROLLING_FILE_WARN_OTHER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+			<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+				<fileNamePattern>logs/other-warn-%d.log.zip</fileNamePattern>
+				<maxHistory>30</maxHistory>
+			</rollingPolicy>
+	
+			<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy"> 
+				<maxFileSize>5MB</maxFileSize>
+			</triggeringPolicy>
+	
+			<encoder>
+				<pattern>%d %level [%thread] %logger{36} - %msg%n</pattern>
+			</encoder>
+			
+			<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+				<level>warn</level>
+			</filter>
+		</appender>
+		
+		<appender name="ROLLING_FILE_WARN_DEX" class="ch.qos.logback.core.rolling.RollingFileAppender">
+			<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+				<fileNamePattern>logs/dex-warn-%d.log.zip</fileNamePattern>
+				<maxHistory>30</maxHistory>
+			</rollingPolicy>
+	
+			<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy"> 
+				<maxFileSize>5MB</maxFileSize>
+			</triggeringPolicy>
+	
+			<encoder>
+				<pattern>%d %level [%thread] %logger{36} - %msg%n</pattern>
+			</encoder>
+			
+			<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+				<level>warn</level>
+			</filter>
+		</appender>
+		<appender name="CLEANER_FILE" class="ch.qos.logback.core.FileAppender">
+			<file>logs/cleaner.log</file>
+			<encoder>
+				<pattern>%d %level [%thread] %logger{36} - %msg%n</pattern>
+			</encoder>
+		</appender>
+		
+		<root level="error">
+			<appender-ref ref="ROLLING_FILE_ALL"/>
+			<appender-ref ref="ROLLING_FILE_WARN_OTHER"/>
+		</root>
+		
+		<logger name="conflux.dex" level="info" additivity="false">
+			<appender-ref ref="ROLLING_FILE_ALL"/>
+			<appender-ref ref="ROLLING_FILE_WARN_DEX"/>
+		</logger>
+
+		<logger name="conflux.dex.service.CleanerService" level="debug" additivity="false">
+			<appender-ref ref="CLEANER_FILE"/>
+		</logger>
+		<logger name="conflux.dex.service.AbstractCleaner" level="debug">
+			<appender-ref ref="CLEANER_FILE"/>
+		</logger>
+		<logger name="conflux.dex.service.DeleteOrderWithoutTradeCleaner" level="debug" additivity="false">
+			<appender-ref ref="CLEANER_FILE"/>
+		</logger>
+		<logger name="conflux.dex.service.TradeAndOrderCleaner" level="debug" additivity="false">
+			<appender-ref ref="CLEANER_FILE"/>
+		</logger>
+	</springProfile>
+
+</configuration>

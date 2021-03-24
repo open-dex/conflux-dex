@@ -1,0 +1,21 @@
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="ehcache.xsd">
+
+<!-- 
+	By default, must specify name and maxEntriesLocalHeap.
+	
+	[ name = product status = STATUS_ALIVE eternal = false overflowToDisk = false maxEntriesLocalHeap = 3 
+	maxEntriesLocalDisk = 0 memoryStoreEvictionPolicy = LRU timeToLiveSeconds = 0 timeToIdleSeconds = 0 
+	persistence = none diskExpiryThreadIntervalSeconds = 120 cacheEventListeners: ; orderedCacheEventListeners:  
+	maxBytesLocalHeap = 0 overflowToOffHeap = false maxBytesLocalOffHeap = 0 maxBytesLocalDisk = 0 pinned = false ]
+ -->
+
+	<cache name="dao.currency" maxEntriesLocalHeap="128" eternal="true"/>
+	<cache name="dao.product" maxEntriesLocalHeap="128" eternal="true"/>
+	<cache name="dao.daily-limit" maxEntriesLocalHeap="128" eternal="true"/>
+	<cache name="dao.daily-limit-rate" maxEntriesLocalHeap="128" eternal="true"/>
+	<cache name="dao.user" maxEntriesLocalHeap="1024" eternal="true"/>
+	<cache name="dao.order" maxEntriesLocalHeap="1024" eternal="true"/>
+	<cache name="dao.account" maxEntriesLocalHeap="2048" eternal="true"/>
+	<cache name="dao.account.list" maxEntriesLocalHeap="1024" eternal="true"/>
+
+</ehcache>

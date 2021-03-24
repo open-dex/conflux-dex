@@ -1,0 +1,53 @@
+{
+    "prod": {
+        "erc777_assets": [],
+        "crcl_assets": [
+            [ "fc_addr", "lfc_addr", "DEX-FC", "DEX-FC" ],	
+            [ "ceth_addr", "leth_addr", "DEX-ETH", "DEX-ETH" ],	
+            [ "cbtc_addr", "lbtc_addr", "DEX-BTC", "DEX-BTC" ],	
+            [ "cusdt_addr", "lusdt_addr", "DEX-USDT", "DEX-USDT" ],
+            [ "cdai_addr", "ldai_addr", "DEX-DAI", "DEX-DAI" ],
+            [ "ccomp_addr", "lcomp_addr", "DEX-COMP", "DEX-COMP" ],
+            [ "cdf_addr", "ldf_addr", "DEX-DF", "DEX-DF" ],
+            [ "cknc_addr", "lknc_addr", "DEX-KNC", "DEX-KNC" ]
+        ]
+    },
+    "stage": {
+        "erc777_assets": [
+            [ "erc777_address_1", "crcl_address_1" ],
+            [ "erc777_address_2", "crcl_address_2" ],
+            [ "fc_addr", "lfc_addr" ]
+        ],
+        "crcl_assets": [
+            [ "fc_addr", "lfc_addr", "DEX-FC", "DEX-FC" ],	
+            [ "ceth_addr", "leth_addr", "DEX-ETH", "DEX-ETH" ],	
+            [ "cbtc_addr", "lbtc_addr", "DEX-BTC", "DEX-BTC" ],	
+            [ "cusdt_addr", "lusdt_addr", "DEX-USDT", "DEX-USDT" ],
+            [ "cdai_addr", "ldai_addr", "DEX-DAI", "DEX-DAI" ],
+            [ "ccomp_addr", "lcomp_addr", "DEX-COMP", "DEX-COMP" ],
+            [ "cdf_addr", "ldf_addr", "DEX-DF", "DEX-DF" ],
+            [ "cknc_addr", "lknc_addr", "DEX-KNC", "DEX-KNC" ],
+            [ "erc777_address_1", "crcl_address_1", "DEX-Token-1", "DEX-Token-1" ],
+            [ "erc777_address_2", "crcl_address_2", "DEX-Token-2", "DEX-Token-2" ]
+        ]
+    },
+    "test": {
+        "erc777_assets": [
+            [ "erc777_address_1", "crcl_address_1" ],
+            [ "erc777_address_2", "crcl_address_2" ],
+            [ "fc_addr", "lfc_addr" ]
+        ],
+        "crcl_assets": [
+            [ "fc_addr", "lfc_addr", "DEX-FC", "DEX-FC" ],	
+            [ "ceth_addr", "leth_addr", "DEX-ETH", "DEX-ETH" ],	
+            [ "cbtc_addr", "lbtc_addr", "DEX-BTC", "DEX-BTC" ],	
+            [ "cusdt_addr", "lusdt_addr", "DEX-USDT", "DEX-USDT" ],
+            [ "cdai_addr", "ldai_addr", "DEX-DAI", "DEX-DAI" ],
+            [ "ccomp_addr", "lcomp_addr", "DEX-COMP", "DEX-COMP" ],
+            [ "cdf_addr", "ldf_addr", "DEX-DF", "DEX-DF" ],
+            [ "cknc_addr", "lknc_addr", "DEX-KNC", "DEX-KNC" ],
+            [ "erc777_address_1", "crcl_address_1", "DEX-Token-1", "DEX-Token-1" ],
+            [ "erc777_address_2", "crcl_address_2", "DEX-Token-2", "DEX-Token-2" ]
+        ]
+    }
+}
