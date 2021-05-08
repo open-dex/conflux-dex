@@ -12,10 +12,13 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 
 import java.math.BigInteger;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static conflux.dex.dao.ConfigDao.ADMIN_NONCE_KEY;
 
 public class NonceKeeper {
+    // share it by atomic
+    public static AtomicReference<BigInteger> nonceCache = new AtomicReference(BigInteger.ZERO);
     public static void checkNonce(Logger logger, Account admin, DexDao dao) {
         Cfx cfx = admin.getCfx();
         // using nonce saved in database could prevent most bad cases.
@@ -88,6 +91,7 @@ public class NonceKeeper {
             protected void doInTransactionWithoutResult(TransactionStatus status) {
                 dao.setConfig(ConfigDao.KEY_LAST_TX_RESERVED_HASH, txHash);
                 dao.setConfig(ConfigDao.KEY_LAST_TX_RESERVED_NONCE, nonce.toString());
+                nonceCache.set(nonce);
             }
         });
     }

@@ -3,6 +3,7 @@ package conflux.dex.blockchain;
 import java.math.BigInteger;
 
 import conflux.dex.controller.AddressTool;
+import conflux.dex.service.NonceKeeper;
 import conflux.web3j.types.Address;
 import org.influxdb.dto.Point.Builder;
 import org.slf4j.Logger;
@@ -71,7 +72,7 @@ public class OrderBlockchain implements InfluxDBReportable {
 		try {
 			this.checkHealthUnsafe();
 		} catch (Exception e) {
-			logger.debug("failed to check balance and nonce for DEX admin", e);
+			logger.error("failed to check balance and nonce for DEX admin", e);
 		}
 	}
 	
@@ -89,17 +90,32 @@ public class OrderBlockchain implements InfluxDBReportable {
 		balanceGauge.setValue(balanceCfx);
 		
 		// check nonce for administrator
-		BigInteger offChainNonce = this.admin.getNonce();
-		BigInteger onChainNonce = this.admin.getCfx().getNonce(this.admin.getAddress()).sendAndGet();
-		
-		// admin nonce may be changed outside of DEX
-		if (offChainNonce.compareTo(onChainNonce) < 0) {
-			String error = String.format("off chain nonce is less than on chain nonce, off = %s, on = %s", offChainNonce, onChainNonce);
-			logger.error(error);
-			Events.BLOCKCHAIN_ERROR.fire(error);
-			return;
-		}
-		
+		BigInteger onChainNonce;
+		BigInteger offChainNonce;
+		int retryTimes = 3;
+		int sleepSeconds = 10;
+		do {
+			onChainNonce = this.admin.getCfx().getNonce(this.admin.getAddress()).sendAndGet();
+			offChainNonce = this.admin.getNonce();
+			BigInteger nonceCache = NonceKeeper.nonceCache.get();
+			if (nonceCache.compareTo(offChainNonce) > 0) {
+				offChainNonce = nonceCache;
+			}
+			// admin nonce may be changed outside of DEX
+			if (offChainNonce.compareTo(onChainNonce) >= 0) {
+				break;
+			} else if (retryTimes > 0) {
+				logger.warn("off chain nonce {} < {} on chain, retry at {}", offChainNonce, onChainNonce, retryTimes);
+				Thread.sleep(sleepSeconds * 1000);
+			} else /*if (offChainNonce.compareTo(onChainNonce) < 0)*/ {
+				String error = String.format("off chain nonce is less than on chain nonce, off = %s, on = %s", offChainNonce, onChainNonce);
+				logger.error(error);
+				Events.BLOCKCHAIN_ERROR.fire(error);
+				return;
+			}
+			retryTimes --;
+		} while (retryTimes > 0);
+
 //		if (onChainNonce.add(this.config.adminMaxNonceFuture).compareTo(offChainNonce) < 0) {
 //			String error = String.format("too many txs pending in txpool, onChainNonce = %s, offChainNonce = %s, maxTooFuture = %s",
 //					onChainNonce, offChainNonce, this.config.adminMaxNonceFuture);
