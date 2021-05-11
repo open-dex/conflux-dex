@@ -3,7 +3,9 @@ package conflux.dex.tool;
 import java.util.Objects;
 import java.util.Optional;
 
+import conflux.dex.common.Utils;
 import conflux.dex.controller.AddressTool;
+import conflux.dex.model.EIP712Data;
 import org.springframework.web.client.RestTemplate;
 
 import conflux.dex.blockchain.TypedWithdraw;
@@ -116,6 +118,18 @@ public class Client {
 			return 0;
 		}
 		return response.getValue(Long.class);
+	}
+
+	public long placeOrderTest(PlaceOrderRequest request) {
+		String url = String.format("%s/orders/place/test", this.url);
+		Response response = this.rest.postForObject(url, request, Response.class);
+		if (Objects.equals(response.getData(), SystemSuspended.getCode())) {
+			System.out.println("place test order :" + response.getMessage());
+			return 0;
+		}
+		EIP712Data value = response.getValue(EIP712Data.class);
+		System.out.println("place test order :" + Utils.toJson(value));
+		return 0;
 	}
 	
 	public void suspend(SystemCommand command) {
