@@ -178,7 +178,9 @@ class TradeSettlement extends Settleable {
 	
 	@Override
 	public boolean isBatchable() {
-		return true;
+		// The order of batched items/trades may be incorrect under concurrent situation.
+		// Disable it before fixed.
+		return false;
 	}
 	
 	@Override
