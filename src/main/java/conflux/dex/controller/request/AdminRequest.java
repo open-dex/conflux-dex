@@ -59,7 +59,7 @@ abstract class AdminRequest {
 	}
 	
 	public void sign(AccountManager am, String signer, String... password) throws Exception {
-		AddressType.validateHexAddress(signer, AddressType.User);
+		AddressType.validateHexAddress(signer, null);
 		this.signature = am.signMessage(this.encode(), true, AddressTool.address(signer), password);
 	}
 	

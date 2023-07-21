@@ -5,12 +5,15 @@ import java.math.BigInteger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import javax.annotation.PostConstruct;
+
 @Configuration
 public class BlockchainConfig extends AutoConfigBase{
 	
 	public static BlockchainConfig instance = new BlockchainConfig();
-	
-	public BlockchainConfig() {
+
+	@PostConstruct
+	public void init() {
 		instance = this;
 	}
 	

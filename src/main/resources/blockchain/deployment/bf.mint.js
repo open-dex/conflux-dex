@@ -7,7 +7,7 @@ const fcContract = require('../FC.json');
 
 const cfx = new Conflux({
     url: process.env.CFX_URL,
-    defaultGasPrice: 1,
+//    defaultGasPrice: 1,
     // logger: console
 });
 

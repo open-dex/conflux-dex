@@ -73,7 +73,7 @@ public class Validators {
 			throw BusinessException.validateFailed("%s not specified", name);
 		}
 
-		AddressType.validateHexAddress(address, expectedType);
+		AddressType.validateHexAddress(address, null);
 
 		// validate checksum of non-lower case address
 		if (!address.toLowerCase().equals(address) && !Keys.toChecksumAddress(address).equals(address)) {
