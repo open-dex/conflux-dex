@@ -3,6 +3,7 @@ package conflux.dex.service;
 import conflux.dex.common.BusinessException;
 import conflux.dex.dao.ConfigDao;
 import conflux.dex.dao.DexDao;
+import conflux.web3j.AMNAccount;
 import conflux.web3j.Account;
 import conflux.web3j.Cfx;
 import conflux.web3j.response.Transaction;
@@ -19,7 +20,7 @@ import static conflux.dex.dao.ConfigDao.ADMIN_NONCE_KEY;
 public class NonceKeeper {
     // share it by atomic
     public static AtomicReference<BigInteger> nonceCache = new AtomicReference(BigInteger.ZERO);
-    public static void checkNonce(Logger logger, Account admin, DexDao dao) {
+    public static void checkNonce(Logger logger, AMNAccount admin, DexDao dao) {
         Cfx cfx = admin.getCfx();
         // using nonce saved in database could prevent most bad cases.
         // unless transaction sent out of this system.

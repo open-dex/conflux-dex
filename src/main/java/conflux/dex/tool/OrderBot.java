@@ -5,14 +5,12 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import conflux.dex.controller.AddressTool;
 import conflux.web3j.CfxUnit;
+import conflux.web3j.types.CfxAddress;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -342,7 +340,7 @@ class Traders {
 	protected conflux.web3j.types.Address erc777User;
 	@Value("${user.trader.number}")
 	private int numTraders;
-	@Value("#{'${user.trader.predefined:}'.split(',')}")
+	@Value("#{'${user.trader.predefined}'.split(',')}")
 	private List<String> tradersHex;
 	private List<conflux.web3j.types.Address> traders;
 	static boolean needUnlock = true;
@@ -427,7 +425,7 @@ class Traders {
 
         // wait for the receipt of last tx
 		System.out.println("Waiting for the completion of deposit txs ...");
-		this.waitForReceiptAndNonce(context.cfx.get(), lastTxHash, this.erc777User, erc777Account.getNonce());
+		this.waitForReceiptAndNonce(context.cfx.get(), lastTxHash, this.erc777User, erc777Account.getPoolNonce());
 		System.out.println("All txs completed");
 		
 		// wait for DEX to monitor the contract event logs to mint for each trader
@@ -442,12 +440,14 @@ class Traders {
         BigInteger depositAmount;//
         depositAmount = BigInteger.TEN.pow(currency.getDecimalDigits() + tenPower);
 		String tokenAddressHex = currency.getTokenAddress();
-		conflux.web3j.types.Address tokenAddress = AddressTool.address(tokenAddressHex);
+		CfxAddress tokenAddress = new CfxAddress(tokenAddressHex, context.cfx.get().getIntNetworkId());
+		CfxAddress crclAddress = new CfxAddress(currency.getContractAddress(), context.cfx.get().getIntNetworkId());
+
 		this.ensureErc777Balance(context.cfx.get(), tokenAddress, depositAmount);
         ERC777 usdtExecutor = new ERC777(context.cfx.get(), tokenAddress, erc777Account);
         String lastTxHash = "";
         for (String recipient : this.tradersHex) {
-            lastTxHash = usdtExecutor.send(new Option(), AddressTool.address(currency.getContractAddress()), depositAmount,
+            lastTxHash = usdtExecutor.send(new Option(), crclAddress, depositAmount,
 					Numeric.hexStringToByteArray(recipient));
 			System.out.println("deposit " + currency.getName() + " x " + depositAmount
 					+ ", to " + recipient + ", hash " + lastTxHash);
@@ -484,8 +484,8 @@ class Traders {
 	}
 	
 	private void ensureErc777Balance(Cfx cfx, conflux.web3j.types.Address erc777, BigInteger amountPerTrader) throws Exception {
-		ERC777 call = new ERC777(cfx, erc777);
-		BigInteger balance = call.balanceOf(this.erc777User);
+		ERC777 call = new ERC777(cfx, new CfxAddress(erc777.getAddress()));
+		BigInteger balance = call.balanceOf(this.erc777User.getHexAddress());
 		BigInteger totalDeposit = amountPerTrader.multiply(BigInteger.valueOf(this.traders.size()));
 		System.out.println("");
 		if (balance == null || balance.compareTo(totalDeposit) < 0) {

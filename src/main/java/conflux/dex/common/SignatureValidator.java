@@ -4,6 +4,8 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.web3j.crypto.Keys;
 import org.web3j.crypto.Sign;
 import org.web3j.crypto.Sign.SignatureData;
@@ -52,7 +54,7 @@ public class SignatureValidator {
 			throw BusinessFault.SystemSuspended.rise();
 		}
 		
-		AddressType.validateHexAddress(signerAddress, AddressType.User);
+		AddressType.validateHexAddress(signerAddress, null);
 		
 		Validators.validateSignature(sigHex);
 		
@@ -72,9 +74,13 @@ public class SignatureValidator {
 		} catch (Exception e) {
 			throw BusinessFault.SignatureParseFail.rise();
 		}
-		
-		String recoveredAddress = AddressType.User.normalize(Keys.getAddress(pubkey));
-		if (!signerAddress.equalsIgnoreCase(recoveredAddress)) {
+
+		String recoveredOrigin = "0x"+Keys.getAddress(pubkey);
+		String recoveredTransform = AddressType.User.normalize(Keys.getAddress(pubkey));
+		if (!signerAddress.equalsIgnoreCase(recoveredTransform)
+		&& !signerAddress.equalsIgnoreCase(recoveredOrigin)) {
+			Logger logger = LoggerFactory.getLogger(getClass());
+			logger.warn("SignatureInvalid, recovered {} expect {}", recoveredOrigin, signerAddress);
 			throw BusinessFault.SignatureInvalid.rise();
 		}
 		

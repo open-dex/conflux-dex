@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import javax.annotation.PostConstruct;
 
 import conflux.dex.service.NonceKeeper;
+import conflux.web3j.AMNAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -131,7 +132,7 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 	}
 	
 	private void validateNonceOnChain() throws Exception {
-		Account admin = this.blockchain.getAdmin();
+		AMNAccount admin = this.blockchain.getAdmin();
 		
 		// Check once for N settlements
 		BigInteger offChainNonce = admin.getNonce();
@@ -238,7 +239,7 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 	}
 	
 	private void sendTransaction(Settleable data, Settleable.Context context) throws Exception {
-		Account admin = this.blockchain.getAdmin();
+		AMNAccount admin = this.blockchain.getAdmin();
 		TransactionRecorder txRecorder = data.getRecorder();
 		boolean resendOnError = txRecorder != null && txRecorder.getLast().error != null;
 		
@@ -258,6 +259,8 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 			if (prevGasPrice != null) {
 				tx.setGasPrice(BlockchainConfig.instance.txResendGasPriceDelta.add(prevGasPrice));
 			}
+		} else {
+			tx.setGasPrice(BlockchainConfig.instance.txGasPrice);
 		}
 		
 		String signedTx = admin.sign(tx);

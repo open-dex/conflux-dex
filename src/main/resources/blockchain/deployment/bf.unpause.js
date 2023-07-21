@@ -13,7 +13,7 @@ async function run() {
     }
     cfx = new Conflux({
         url: cfxUrl,
-        defaultGasPrice: 1,
+//        defaultGasPrice: 1,
         // log: console
     });
     await cfx.updateNetworkId();

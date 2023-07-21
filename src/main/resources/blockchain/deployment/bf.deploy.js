@@ -77,7 +77,7 @@ if (program.c_name) {
 console.info(`cfx url is ${cfxUrl}`);
 const cfx = new Conflux({
     url: cfxUrl,
-    defaultGasPrice: 1,
+//    defaultGasPrice: 1,
     // logger: console,
 });
 const crcl = buildContract(cfx,'../CRCL.json');
