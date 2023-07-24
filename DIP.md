@@ -13,6 +13,7 @@
 2. To support multiple market makers to place or cancel orders in a very high throughput, we recommend to introduce memory database for incomplete orders. So that, majority orders that never matched and cancelled will not be frequently updated in database.
 3. DEX do not provide APIs to query both complete and incomplete orders, so `t_order` table could be splitted into 2 separate tables and remove the index for `status` column. Otherwise, the data size will increase dramatically, and the overhed for index maintanence will become heavior and heavior over time.
 4. Could add more caches for both REST APIs and WebSocket APIs, especially for the frequently accessed APIs according to metrics.
+5. Settlement of trades on the chain could be batched. It was implemented but disabled (see `TradeSettlement.isBatchable`).
 
 ## Scalability & Availability
 1. Introduce message queue middleware to replace the current in-memory queue (`Channel<T>` interface), so that service layer could be horizontally extended.

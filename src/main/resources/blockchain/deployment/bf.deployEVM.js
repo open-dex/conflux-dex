@@ -1,23 +1,19 @@
 const program = require('commander');
-const { Conflux, format } = require("js-conflux-sdk");
 const JSBI = require('./WrapJSBI');
+const ethers = require('ethers')
 const tokenConfAll = require('./bf.erc20-erc777.js')
 const {executeSql,executeDB,boomflowAddrKey} = require('../tool/mysql')
 let tokenConf = tokenConfAll[process.env.DEPLOY_ENV];
 
-function buildContract(cfx, path, address) {
+function buildContract(path) {
     const contract = require(path);
-    return cfx.Contract({
-        bytecode: contract.bytecode,
-        abi: contract.abi,
-        address: address
-    });
+    return new ethers.ContractFactory(contract.abi, contract.bytecode);
 }
 
 // variables from arguments or environment.
 let boomflowPrivateKey = process.env.BOOMFLOW_ADMIN_PRIVATE_KEY;
 let environment =        process.env.DEPLOY_ENV;
-let cfxUrl =             process.env.CFX_URL;
+let cfxUrl =             process.env.EVM_RPC_URL;
 const dexAdmin =         process.env.DEX_ADMIN_ADDRESS;
 const custodianProxyAddress = process.env.CUSTODIAN_PROXY_ADDRESS;
 const fcAdminForTest = "0x144aa8f554d2ffbc81e0aa0f533f76f5220db09c";
@@ -74,24 +70,22 @@ if (program.c_name) {
     };
 }
 
-console.info(`cfx url is ${cfxUrl}`);
-const cfx = new Conflux({
-    url: cfxUrl,
-//    defaultGasPrice: 1,
-    // logger: console,
-});
-const crcl = buildContract(cfx,'../CRCL.json');
-const boomflow = buildContract(cfx,'../Boomflow.json');
-const erc777 = buildContract(cfx,'../TokenBase.json');
-const fc = buildContract(cfx,'../FC.json');
-const wcfxContract = buildContract(cfx, '../WrappedCfx.json');
+console.info(`EVM_RPC_URL is ${cfxUrl}`);
+const cfx = ethers.getDefaultProvider(cfxUrl);
+
 console.info(`boomflowPrivateKey ${boomflowPrivateKey.substr(0,10)}...`)
+
+let crcl = buildContract('../CRCL.json');
+let boomflow = buildContract('../Boomflow.json');
+let erc777 = buildContract('../TokenBase.json');
+let fc = buildContract('../FC.json');
+let wcfxContract = buildContract('../WrappedCfx.json');
 
 let sender = {}
 
 let crcl_assets = tokenConf.crcl_assets;
 let erc777_assets = tokenConf.erc777_assets;
-let nonce = undefined;
+let nonce = 0;
 
 async function loadBoomflowContractAddr() {
     // noinspection SqlResolve
@@ -101,24 +95,40 @@ async function loadBoomflowContractAddr() {
     log(`load boomflow address from database ${boomflowAddr}`);
 }
 async function run() {
-    await cfx.updateNetworkId();
-    sender = cfx.wallet.addPrivateKey(boomflowPrivateKey).address;
-    let boomBan = (await cfx.getBalance(sender)) / BigInt(1e+18)
-    log('net work id:', cfx.networkId, 'boom address', sender, 'balance', boomBan)
-    if (boomBan < 100) {
-        console.log(`Boom address does not have enough balance. ${boomBan} < 100`)
+    let wallet = new ethers.Wallet(boomflowPrivateKey, cfx);
+    deployerAccount = await wallet.getAddress();
+    console.log(`boomflow address: ${deployerAccount}`)
+
+    crcl = crcl.connect(wallet);
+    boomflow = boomflow.connect(wallet);
+    erc777 = erc777.connect(wallet);
+    fc = fc.connect(wallet);
+    wcfxContract = wcfxContract.connect(wallet);
+
+    const network = await cfx.getNetwork();
+    console.log(`network `, network)
+    sender = deployerAccount;
+    let boomBan = await wallet.getBalance().then(res=>{
+        // console.log(`formatEther`, res)
+        return ethers.utils.formatEther(res)
+    })
+    log('net work id:', network.chainId, 'boom address', deployerAccount, 'balance', boomBan)
+    if (parseFloat(boomBan) < 100) {
+        console.log(`Boom address's balance is insufficient. ${boomBan} < 100`)
         process.exit(1)
     }
-    nonce = await cfx.getNextNonce(sender).catch(err=>{
+    nonce = await wallet.getTransactionCount().then(res=>parseInt(res.toString())).catch(err=>{
         log('get nonce fail.', err.data, err)
+        process.exit(1)
     });
-    console.info(`next nonce ${nonce}, environment ${environment}, sender ${sender}`)
+    console.info(`next nonce ${nonce}, environment ${environment}, sender ${deployerAccount}`)
+
     if (updateBoomflow) {
         // will get new boomflow address.
-        nonce = await deployBoomflow(nonce);
+        await deployBoomflow(nonce++);
     } else if(updateCRCL || program.boomflowAdmin){
         // after updating crcl, we need to add white list.
-        loadBoomflowContractAddr()
+        await loadBoomflowContractAddr()
     }
     if (erc777_assets.length === 0) {
         log(`no erc 777 to deploy.`)
@@ -127,77 +137,53 @@ async function run() {
         // deploy erc777, and fc (test environment).
         await Promise.all(
             erc777_assets.map(async (token, index) => {
+                // console.log(`preset token : `, token)
+                const useNonce = nonce ++;
+                console.info(`begin deploying token ${token.name} , use nonce ${useNonce}`)
                 let instance = undefined;
                 if (token.isErc777) {
-                    instance = erc777.constructor(`Open Dex ${token.name}`, `K-${token.name}`, [])
+                    instance = await erc777.deploy(`Evm Dex ${token.name}`, `K-${token.name}`, [], {nonce: useNonce})
                 } else if (token.isCFX) {
-                    instance = wcfxContract.constructor([])
+                    instance = await wcfxContract.deploy([], {nonce: useNonce})
                 } else if (token.isFC) {
-                    instance = fc.constructor()
+                    instance = await fc.deploy({nonce: useNonce})
                 } else {
                     throw new Error(`Token configuration error, ${token.name}`)
                 }
-                return deployCfxToken(token, instance, JSBI.add(nonce, JSBI.BigInt(index)))
+                return deployCfxToken(token, instance)
             })
         ).catch(err=>{
+            delete err.transaction?.data;
+//            err.error = err.error?.substring(0, (err.error?.indexOf(`"data":`) || 1000));
             console.log(`deploy erc777 fail.`, err)
             process.exit(1)
         })
-        log(`wait nonce after deploy ${erc777_assets.length} token(s).`)
-        nonce = await waitNonce(JSBI.add(nonce, JSBI.BigInt(erc777_assets.length)), sender);
-
-        const fcToken = erc777_assets.find(t=>t.isFC);
-        if (fcToken) {
-            await resumeFC(fcToken, buildTxParam(nonce))
-            nonce = await waitNonce(JSBI.add(nonce, JSBI.BigInt(1)), sender);
-        }
     }
     if (updateCRCL) {
         // deployCRCL
         await Promise.all(
             crcl_assets.map(async (token, index) => {
-                return deployCRCL(token, JSBI.add(nonce, JSBI.BigInt(index)))
+                return deployCRCL(token, nonce++)
             })
         )
-        console.info(`deploy crcl sent, wait nonce. cur ${nonce}`);
+        console.info(`deploy crcl done`);
         //
-        nonce = await waitNonce(JSBI.add(nonce, JSBI.BigInt(crcl_assets.length)), sender);
     }
-    // codes below are fixing relationship.
-    if (updateBoomflow || program.boomflowAdmin) {
-        let wait_list = [];
-        // add dex admin to WhitelistAdmin and Whitelisted of boomflow contract
-        wait_list.push(callBoomflow(boomflowAddr, boomflow.addWhitelisted(dexAdmin).data, nonce, 'addWhitelisted'));
-        nonce = JSBI.add(nonce, JSBI.BigInt(1));
 
-        wait_list.push(callBoomflow(boomflowAddr, boomflow.addWhitelistAdmin(dexAdmin).data, nonce, 'addWhitelistAdmin'));
-        nonce = JSBI.add(nonce, JSBI.BigInt(1));
+    if (updateBoomflow || program.boomflowAdmin) {
+//        await callBoomflow(boomflowAddr, 'Resume')
+//        return
+        // add dex admin to WhitelistAdmin and Whitelisted of boomflow contract
+        await callBoomflow(boomflowAddr, 'addWhitelisted', dexAdmin);
+
+        await callBoomflow(boomflowAddr, 'addWhitelistAdmin', dexAdmin);
         log(`add dex admin ${dexAdmin} to WhitelistAdmin and Whitelisted of boomflow contract ${boomflowAddr} begin.`)
 
         if (program.boomflow) {
             // when deploying boomflow standalone, unpause it
-            await callBoomflow(boomflowAddr, boomflow.Resume().data, nonce, 'Resume')
-            nonce = JSBI.add(nonce, JSBI.BigInt(1));
+            await callBoomflow(boomflowAddr, 'Resume')
         }
-        await Promise.all(wait_list);
-        nonce = await waitNonce(nonce, sender);
     }
-    if (environment !== "prod" && updateTokens && program.name === undefined) {
-        log();
-        console.log("Add Admin to FC, ", fcAdminForTest)
-
-        await addAdmin(fcAdminForTest, nonce)
-        await waitNonce(JSBI.add(nonce, JSBI.BigInt(1)), sender)
-    }
-}
-
-function updateDB() {
-
-    executeSql('SELECT 1 + 1 AS solution'
-    ).then((results, fields)=>{
-        console.info(`exec sql 2`)
-        console.info(`done ${JSON.stringify(results)}`)
-    })
 }
 
 function log(...data) {
@@ -205,24 +191,19 @@ function log(...data) {
 }
 
 //=========================================================================================================
-async function deployCfxToken(token, contract, nonce) {
-    const txParams = buildTxParam(nonce);
-    console.info(`begin deploying token ${token.name},nonce ${nonce}`)
-    return contract
-        .sendTransaction(txParams)
-        .executed()
+async function deployCfxToken(token, contract) {
+    return contract.deployTransaction.wait()
         .then((receipt) => {
-            const retAddr = receipt.contractCreated;
+            const retAddr = receipt.contractAddress;
             console.log('new address, ' + token.name + ":", retAddr)
-            token.cfxTokenAddress = format.hexAddress(retAddr);
+            token.cfxTokenAddress = retAddr;
             updateTokenAddress(token);
             if (token.isFC) {
                 FC_ADDRESS = token.cfxTokenAddress;
             }
-            return nonce + 1n;
         })
         .catch(error => {console.log(`deploy contract for ${token.name
-        } fail, nonce ${nonce}, params ${JSON.stringify(txParams)} #`,error); process.exit(1)})
+        } fail, nonce ${nonce}, params #`,error); process.exit(1)})
 }
 
 function resumeFC(token, txParams) {
@@ -236,14 +217,12 @@ function resumeFC(token, txParams) {
 
 async function deployBoomflow(nonce) {
     log(`begin deploying boomflow, nonce ${nonce}`);
-    const txParams = buildTxParam(nonce);
-    await boomflow.constructor()
-        .sendTransaction(txParams)
-        .executed()
+    const contract = await boomflow.deploy();
+    return contract.deployTransaction.wait()
         .then((receipt) => {
-            const retAddr = receipt.contractCreated;
-            boomflowAddr = format.hexAddress(retAddr)
-            console.log("deploy boomflow, got addr:", boomflowAddr, retAddr)
+            const retAddr = receipt.contractAddress;
+            boomflowAddr = retAddr;
+            console.log("deploy boomflow, got addr:", boomflowAddr)
             // noinspection SqlResolve
             executeSql(`replace into t_config (name, value) values ('${boomflowAddrKey}', '${boomflowAddr}') `)
                 .then(results=>{
@@ -251,14 +230,11 @@ async function deployBoomflow(nonce) {
                 })
         })
         .catch(error => {console.log('deploy boomflow fail', error); process.exit(1)})
-    console.log(`wait nonce after deployBoomflow begin`)
-    return waitNonce(JSBI.add(nonce, JSBI.BigInt('1')), sender)
-    console.log(`wait nonce after deployBoomflow end`)
 }
 
-async function deployCRCL(token, nonce) {
+async function deployCRCL(token, useNonce) {
     let erc777_addr = token.cfxTokenAddress;
-    console.info(`prepare deploying crcl, ${token.name}, erc777 address ${erc777_addr}`)
+    console.info(`prepare deploying crcl, use nonce ${useNonce} , ${token.name} erc777 address ${erc777_addr}`)
     if (erc777_addr === undefined || erc777_addr === '') {
         if (token.outerAddress) {
             erc777_addr = token.outerAddress
@@ -288,20 +264,18 @@ async function deployCRCL(token, nonce) {
         }
     }
 
-    const txParams = buildTxParam(nonce);
     const name = token.name;
-    log(`begin deploying crcl ${name}`)
+    log(`begin deploying crcl ${name} with nonce ${useNonce}`)
     // 259200: lock 3 days
     // there is a hard coded checking in CRCL contract when withdraw, that requires DEX-CFX as name.
-    return crcl.constructor(`CRCL ${name}`/*name*/, `L-${name}`/*symbol*/, 18, erc777_addr, boomflowAddr, 259200, token.isCFX)
-        .sendTransaction(txParams)
-        .executed()
+    const contract = await crcl.deploy(`CRCL ${name}`/*name*/, `${name}`/*symbol*/,
+        18, erc777_addr, boomflowAddr, 259200, token.isCFX, {nonce: useNonce})
+    return contract.deployTransaction.wait()
         .then((receipt) => {
-            const retAddr = receipt.contractCreated;
+            const retAddr = receipt.contractAddress;
             console.log('set crcl address for ' + name + ":", retAddr)
-            token.crclAddress = format.hexAddress(retAddr);
+            token.crclAddress = retAddr;
             updateTokenAddress(token)
-            return nonce + 1n
         })
         .catch(error => {console.log(`deploy crcl ${token.name} fail`, error); process.exit(1)})
 }
@@ -319,52 +293,36 @@ function buildTxParam(nonce) {
  * @param nonce
  * @returns {Promise<unknown>}
  */
-async function addWhitelisted(token, addr, nonce, what) {
+async function addWhitelisted(token, addr, what, useNonce) {
     const crclAddr = token.crclAddress;
-
-    const txParams = {
-        from: sender,
-        nonce: nonce,
-        value: 0,
-        to: format.address(crclAddr, cfx.networkId),
-        data: crcl[what](addr).data,
-    };
-    console.info(`LOG_MARK_01 # add ${addr} to ${what} of CRCL ${token.name} ${crclAddr}, begin, nonce ${nonce}`);
-    return cfx.sendTransaction(txParams).executed()
+    const realContract = await crcl.attach(crclAddr);
+    console.info(`LOG_MARK_01 #  nonce ${useNonce} , add ${addr} to ${what} of CRCL ${token.name} ${crclAddr}, begin`);
+    return realContract[what](addr, {nonce: useNonce}).then(tx=>tx.wait())
         .then(obj=>console.info(`add ${addr} to ${what} of CRCL ${token.name}, ok`))
         .catch(err=>{console.error(`add ${addr} to ${what} of CRCL ${token.name} fail`, err); process.exit(1)})
 }
 
-async function callBoomflow(boomflow_addr, data, nonce, what) {
-    const txParams = {
-        from: sender,
-        nonce: nonce,
-        value: 0,
-        to: format.address(boomflow_addr, cfx.networkId),
-        data: data,
-    };
-
-    return cfx.sendTransaction(txParams).executed()
-        .then(obj=>console.info(`callBoomflow ${what} ok , result ${obj.transactionHash}`))
-        .catch(err=>{console.error(`callBoomflow ${what} fail`, err); })
+async function callBoomflow(boomflow_addr, what, ...args) {
+    const realContract = await boomflow.attach(boomflow_addr);
+    return realContract[what](...args).then(tx=>tx.wait())
 }
 
 async function addAdmin(addr, nonce) {
-    const txParams = {
-        from: sender,
-        nonce: nonce,
-        value: 0,
-        to: format.address(FC_ADDRESS, cfx.networkId),
-        data: fc.addAdmin(addr).data,
-    };
-
-    return cfx.sendTransaction(txParams).executed().catch(err=>log(`add admin fail`, err))
+    // const txParams = {
+    //     from: sender,
+    //     nonce: nonce,
+    //     value: 0,
+    //     to: format.address(FC_ADDRESS, cfx.networkId),
+    //     data: fc.addAdmin(addr).data,
+    // };
+    const realContract = await fc.attach(FC_ADDRESS);
+    return realContract.addAdmin(addr).then(tx=>tx.wait()).catch(err=>log(`add admin fail`, err))
 }
 
 async function waitNonce(target, acc) {
     let x;
     while (true) {
-        x = await cfx.getNextNonce(acc);
+        x = await cfx.getTransactionCount(acc);
         if (JSBI.lessThan(x, target)) {
             console.log(`wait nonce. sleep.`)
             await sleep(1000);
@@ -401,7 +359,7 @@ function updateTokenAddress(token) {
             const cfxTokenAddr = token.cfxTokenAddress || `cfxTokenAddrNotSet${token.id}`
             if (count === 0) {
                 connection.query(
-                    `insert into t_currency 
+                    `insert into t_currency
                 (id, name, contract_address, token_address, decimal_digits, cross_chain, minimum_withdraw_amount)
                 values (${token.id}, '${token.name}', '${crclAddr}', '${cfxTokenAddr}',
                 ${token.decimal_digits},${token.cross_chain},${token.minimum_withdraw_amount})`,
@@ -456,7 +414,9 @@ async function buildContractAddressJson() {
 if (program.merge_address) {
     buildContractAddressJson();
 } else {
-    run();
+    run().catch(error => {
+        delete error.transaction?.data;
+        console.log(`deployment failed.`, error)
+        process.exit(1)
+    });
 }
-// updateDB();
-// erc777_assets[1].cfxTokenAddress = erc777_assets[1].id+'cfxAddr'; updateTokenAddress(erc777_assets[1]);

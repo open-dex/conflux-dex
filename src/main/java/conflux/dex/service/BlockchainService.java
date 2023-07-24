@@ -92,9 +92,9 @@ public class BlockchainService {
 			}
 		} catch (RpcException e) {
 			if (Utils.isRpcError(e)) {
-				logger.error("failed to poll event logs", e);
+				logger.error("rpc failed to poll event logs", e);
 			} else {
-				logger.debug("failed to poll event logs: {}", e.getMessage());
+				logger.error("failed to poll event logs.", e);
 			}
 		} catch (Exception e) {
 			logger.error("failed to poll event logs", e);

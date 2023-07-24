@@ -279,7 +279,7 @@ class TradeSettlementHelper {
 	}
 	
 	public int getLogLength() {
-		return this.feeData.getStrategy() == FeeStrategy.ForFree ? 6 : 8;
+		return this.feeData.getStrategy() == FeeStrategy.ForFree ? 4 : 8;
 	}
 	
 	public TypedOrder getMakerOrder() {
@@ -377,6 +377,10 @@ class TradeSettlementHelper {
 		error = TransferData.validate(logs.get(3), this.getBuyAsset(false), this.taker.getName(), this.maker.getName(), this.getBuyAmount(false));
 		if (!StringUtils.isEmpty(error)) {
 			return String.format("failed to validate Transfer event from taker to maker: %s", error);
+		}
+
+		if (this.feeData.getStrategy().equals(FeeStrategy.ForFree)) {
+			return null;
 		}
 		
 		// validate "Transfer" event log from maker to fee recipient

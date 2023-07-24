@@ -46,6 +46,8 @@ function createEnv(){
     echo '' >> ${envFile}
     echo '# Blockchain configurations' >> ${envFile}
     echo 'export CFX_URL="https://test.confluxrpc.org/v2"' >> ${envFile}
+    echo 'export EVM=""' >> ${envFile}
+    echo 'export EVM_RPC_URL="https://test.confluxrpc.org/v2"' >> ${envFile}
 
     echo '' >> ${envFile}
     echo '# Metrics configurations' >> ${envFile}

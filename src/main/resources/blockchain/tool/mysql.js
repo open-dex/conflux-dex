@@ -12,10 +12,10 @@ function executeSql(sql) {
         })
     })
 }
-async function getTokenAddress(name) {
-    const result = await executeSql(`select token_address from t_currency where name = '${name}'`);
-    if (result.length === 0) throw new Error(`token_address not found for ${name}.`)
-    return result[0]['token_address'];
+async function getTokenAddress(name, field = 'token_address') {
+    const result = await executeSql(`select ${field} from t_currency where name = '${name}'`);
+    if (result.length === 0) throw new Error(`${field} not found for ${name}.`)
+    return result[0][field];
 }
 async function getConfig(name) {
     const result = await executeSql(`select value from t_config where name = '${name}'`);
