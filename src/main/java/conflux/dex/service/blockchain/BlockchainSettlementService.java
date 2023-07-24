@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import javax.annotation.PostConstruct;
 
 import conflux.dex.service.NonceKeeper;
+import conflux.dex.tool.CfxTxSender;
 import conflux.web3j.AMNAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,18 +254,20 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 				? admin.getCfx().getEpochNumber().sendAndGet()
 				: this.heartBeatService.getCurrentEpoch();
 		RawTransaction tx = RawTransaction.call(nonce, context.gasLimit, context.contract, context.storageLimit, epoch, context.data);
-		
+
+		BigInteger gasPrice = BlockchainConfig.instance.txGasPrice;
 		if (resendOnError) {
-			BigInteger prevGasPrice = txRecorder.getLast().gasPrice;
-			if (prevGasPrice != null) {
-				tx.setGasPrice(BlockchainConfig.instance.txResendGasPriceDelta.add(prevGasPrice));
+			gasPrice = txRecorder.getLast().gasPrice;
+			if (gasPrice == null) {
+				gasPrice = BlockchainConfig.instance.txGasPrice;
 			}
-		} else {
-			tx.setGasPrice(BlockchainConfig.instance.txGasPrice);
+			gasPrice = gasPrice.add(BlockchainConfig.instance.txResendGasPriceDelta);
 		}
-		
-		String signedTx = admin.sign(tx);
-		String txHash = Hash.sha3(signedTx);
+		tx.setGasPrice(gasPrice);
+
+		String[] txInfo = CfxTxSender.buildTx(admin, context.contract, nonce, epoch, context.data, gasPrice, context.gasLimit, context.storageLimit);
+		String signedTx = txInfo[0];
+		String txHash = txInfo[1];
 
 		NonceKeeper.reserve(resendOnError, this.dao, txHash, nonce);
 		data.updateSettlement(this.dao, SettlementStatus.OffChainSettled, txHash, tx);
@@ -273,9 +276,10 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		
 		try (Context ctx = perfSendTx.time()) {
 			// For re-send case, do not update the local tx nonce of DEX admin.
-			result = resendOnError
-					? admin.getCfx().sendRawTransactionAndGet(signedTx)
-					: admin.send(signedTx);	// nonce++ if succeeded.
+			result = admin.getCfx().sendRawTransactionAndGet(signedTx);
+			if (!resendOnError) {
+				admin.setNonce(nonce.add(BigInteger.ONE));
+			}
 			NonceKeeper.saveNext(resendOnError, this.dao, admin.getNonce().toString());
 		}
 		

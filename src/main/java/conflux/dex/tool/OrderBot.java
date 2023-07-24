@@ -454,7 +454,7 @@ class Traders {
 			String functionData = this.encodeSendFunction(currency.getContractAddress(), depositAmount, recipient);
 			BigInteger gasLimit = BigInteger.valueOf(90_000L);
 			BigInteger storageLimit = BigInteger.valueOf(512L);
-			lastTxHash = CfxTxSender.sendTx(erc777Account, tokenAddress, functionData, gasPrice, gasLimit, storageLimit);
+			lastTxHash = CfxTxSender.sendTx(erc777Account, tokenAddress, functionData, gasPrice, gasLimit, storageLimit).getTxHash();
 			System.out.println("deposit " + currency.getName() + " x " + depositAmount
 					+ ", to " + recipient + ", hash " + lastTxHash);
         }
