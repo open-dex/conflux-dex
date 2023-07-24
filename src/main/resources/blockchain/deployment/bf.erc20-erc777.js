@@ -49,9 +49,19 @@ const eosTest = buildCurrency('EOS'); eosTest.isErc777 = true;
 const kCoinTest = buildCurrency('KCoin'); kCoinTest.isErc777 = true;
 //
 const testConf = {
-    "erc777_assets":[fcStage, cfxStage, eosTest, kCoinTest, usdtStage],
+    "erc777_assets":[
+        // fcStage,
+        // cfxStage,
+        eosTest,
+        kCoinTest, usdtStage
+    ],
     crcl_assets: [
-           fcStage, cfxStage, eosTest, kCoinTest, usdtStage,btcStage, ethStage, ]
+           // fcStage,
+        // cfxStage,
+        eosTest,
+        kCoinTest, usdtStage,
+        //btcStage, ethStage,
+    ]
 }
 module.exports = {
     currencyTemplates,

@@ -356,7 +356,7 @@ public class OrderService {
 
 
 	@Scheduled(
-			initialDelayString = "${blockchain.prune.order.interval.update.millis:600000}",
+			initialDelayString = "${blockchain.prune.order.interval.update.millis:1000}",
 			fixedDelayString = "${blockchain.prune.order.interval.update.millis:600000}")
 	public void updateOrderExpiration() {
 		long pruneTime = System.currentTimeMillis() - this.updateExpirationMillis;

@@ -69,16 +69,19 @@ fi
 echo "******************** deploy boomflow start ********************"
 # call node script to deploy contracts
 # Deploy contracts: Boomflow, ERC777, FC, CRCL
-node ./src/main/resources/blockchain/deployment/bf.deploy.js
+node ./src/main/resources/blockchain/deployment/bf.deploy$EVM.js
+if [ "$?" != "0" ]; then
+  exit
+fi
 if [ "$PROFILE" != "prod" ]; then
   # mint for test
-	node ./src/main/resources/blockchain/deployment/bf.mint.js $UI_ADMIN_ADDRESS
+	node ./src/main/resources/blockchain/deployment/bf.mint$EVM.js $UI_ADMIN_ADDRESS
 fi
 echo "******************** deploy boomflow ended ********************"
 
 # unpause contracts
 echo "******************** unpause boomflow start ********************"
-node $RESOURCE_DIR/blockchain/deployment/bf.unpause.js
+node $RESOURCE_DIR/blockchain/deployment/bf.unpause$EVM.js
 echo "******************** unpause boomflow ended ********************"
 }
 ######### doBashWork end ##############
@@ -117,11 +120,13 @@ echo -e "SET FOREIGN_KEY_CHECKS=0;" >> $SETUP_ASSET_SQL_FILE
 echo -e "" >> $SETUP_ASSET_SQL_FILE
 
 echo -e "REPLACE INTO t_product (id, name, base_currency_id, quote_currency_id, price_precision, amount_precision, funds_precision, min_order_amount, max_order_amount, min_order_funds, instant_exchange, base_product_id, quote_product_id, base_is_base_side, quote_is_base_side) VALUES" >> $SETUP_ASSET_SQL_FILE
-echo -e "\t(1, 'BTC-USDT', 1, 3, 2, 6, 8, 0.000001, 99999999.999999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
-echo -e "\t(2, 'ETH-USDT', 2, 3, 2, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
-echo -e "\t(3, 'FC-USDT', 4, 3, 4, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
-echo -e "\t(4, 'CFX-USDT', 9, 3, 4, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL)" >> $SETUP_ASSET_SQL_FILE
-echo -e ",\t(5, 'EOS-KCoin', 10, 11, 4, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL);" >> $SETUP_ASSET_SQL_FILE
+if [ "$PROFILE" == "prod" ]; then
+  echo -e "\t(1, 'BTC-USDT', 1, 3, 2, 6, 8, 0.000001, 99999999.999999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
+  echo -e "\t(2, 'ETH-USDT', 2, 3, 2, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
+  echo -e "\t(3, 'FC-USDT', 4, 3, 4, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
+  echo -e "\t(4, 'CFX-USDT', 9, 3, 4, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL)," >> $SETUP_ASSET_SQL_FILE
+fi
+echo -e "\t(5, 'EOS-KCoin', 10, 11, 4, 4, 8, 0.0001, 99999999.9999, 0.00000001, false, NULL, NULL, NULL, NULL);" >> $SETUP_ASSET_SQL_FILE
 
 #echo -e "\t(5, 'BTC-FC', 1, 6, 2, 6, 2, 0.000001, 99999999.999999, 0.01, true, 1, 4, true, false);" >> $SETUP_ASSET_SQL_FILE
 echo -e "" >> $SETUP_ASSET_SQL_FILE
@@ -143,9 +148,10 @@ rm -rf logs
 # Start DEX service in background
 PORT=${SERVER_PORT:-8080}
 cd $DEX_DIR
-nohup gradle bootRun --args="--spring.profiles.active=$PROFILE\
- --blockchain.poll.epoch=$epochNum\
- --server.port=${PORT}\
-" > console.log 2>&1 &
+pwd
+#./gradlew bootRun --args="--spring.profiles.active=$PROFILE\
+# --blockchain.poll.epoch=$epochNum\
+# --server.port=${PORT}\
+#"
 
 echo "Start script finished. server port ${PORT}, database ${DB}"

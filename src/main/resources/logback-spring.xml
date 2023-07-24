@@ -15,8 +15,8 @@
 		<logger name="conflux.dex" level="info"/>
 		<logger name="conflux.dex.service.CleanerService" level="debug"/>
 		<logger name="conflux.dex.service.AbstractCleaner" level="debug"/>
-		<logger name="conflux.dex.service.DeleteOrderWithoutTradeCleaner" level="debug"/>
-		<logger name="conflux.dex.service.TradeAndOrderCleaner" level="debug"/>
+		<logger name="conflux.dex.service.DeleteOrderWithoutTradeCleaner" level="info"/>
+		<logger name="conflux.dex.service.TradeAndOrderCleaner" level="info"/>
 		<logger name="conflux.dex.ws.topic.AccountTopic" level="warn"/>
 	</springProfile>
 	
@@ -106,16 +106,16 @@
 			<appender-ref ref="ROLLING_FILE_WARN_DEX"/>
 		</logger>
 
-		<logger name="conflux.dex.service.CleanerService" level="debug" additivity="false">
+		<logger name="conflux.dex.service.CleanerService" level="info" additivity="false">
 			<appender-ref ref="CLEANER_FILE"/>
 		</logger>
-		<logger name="conflux.dex.service.AbstractCleaner" level="debug">
+		<logger name="conflux.dex.service.AbstractCleaner" level="info">
 			<appender-ref ref="CLEANER_FILE"/>
 		</logger>
-		<logger name="conflux.dex.service.DeleteOrderWithoutTradeCleaner" level="debug" additivity="false">
+		<logger name="conflux.dex.service.DeleteOrderWithoutTradeCleaner" level="info" additivity="false">
 			<appender-ref ref="CLEANER_FILE"/>
 		</logger>
-		<logger name="conflux.dex.service.TradeAndOrderCleaner" level="debug" additivity="false">
+		<logger name="conflux.dex.service.TradeAndOrderCleaner" level="info" additivity="false">
 			<appender-ref ref="CLEANER_FILE"/>
 		</logger>
 	</springProfile>
