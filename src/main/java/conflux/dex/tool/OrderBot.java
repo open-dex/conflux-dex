@@ -19,7 +19,10 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.ClassPathResource;
+import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.DynamicBytes;
+import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 import org.web3j.utils.Numeric;
 
@@ -444,16 +447,25 @@ class Traders {
 		CfxAddress crclAddress = new CfxAddress(currency.getContractAddress(), context.cfx.get().getIntNetworkId());
 
 		this.ensureErc777Balance(context.cfx.get(), tokenAddress, depositAmount);
-        ERC777 usdtExecutor = new ERC777(context.cfx.get(), tokenAddress, erc777Account);
         String lastTxHash = "";
-        for (String recipient : this.tradersHex) {
-            lastTxHash = usdtExecutor.send(new Option(), crclAddress, depositAmount,
-					Numeric.hexStringToByteArray(recipient));
+
+		BigInteger gasPrice = erc777Account.getCfx().getGasPrice().sendAndGet().add(BigInteger.ONE);
+		for (String recipient : this.tradersHex) {
+			String functionData = this.encodeSendFunction(currency.getContractAddress(), depositAmount, recipient);
+			BigInteger gasLimit = BigInteger.valueOf(90_000L);
+			BigInteger storageLimit = BigInteger.valueOf(512L);
+			lastTxHash = CfxTxSender.sendTx(erc777Account, tokenAddress, functionData, gasPrice, gasLimit, storageLimit);
 			System.out.println("deposit " + currency.getName() + " x " + depositAmount
 					+ ", to " + recipient + ", hash " + lastTxHash);
         }
         return lastTxHash;
     }
+
+	String encodeSendFunction(String to, BigInteger amount, String recipientInData) {
+		byte[] data = Numeric.hexStringToByteArray(recipientInData);
+		Function function = new Function("send", Arrays.asList(new Address(to), new Uint256(amount), new DynamicBytes(data)), Collections.emptyList());
+		return FunctionEncoder.encode(function);
+	}
 
     private List<String> generateNewTraders(Context context) throws Exception {
 		System.out.printf("Begin to create %d traders to place orders ...\n", this.numTraders);
