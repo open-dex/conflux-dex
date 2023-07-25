@@ -19,6 +19,9 @@ public class BlockchainConfig extends AutoConfigBase{
 	
 	@Value("${blockchain.enabled:false}")
 	public boolean enabled;
+
+	@Value("${blockchain.isEVM:false}")
+	public boolean evm;
 	
 	// settlement configurations
 	@Value("${blockchain.settlement.pause.sleep:5000}")
@@ -251,5 +254,13 @@ public class BlockchainConfig extends AutoConfigBase{
 
 	public String getTxRelayerUrls() {
 		return txRelayerUrls;
+	}
+
+	public boolean isEvm() {
+		return evm;
+	}
+
+	public void setEvm(boolean evm) {
+		this.evm = evm;
 	}
 }

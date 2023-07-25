@@ -9,12 +9,12 @@ import javax.annotation.PostConstruct;
 
 import conflux.dex.service.NonceKeeper;
 import conflux.dex.tool.CfxTxSender;
+import conflux.dex.tool.SpringTool;
 import conflux.web3j.AMNAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.web3j.crypto.Hash;
 
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.Timer.Context;
@@ -40,7 +40,6 @@ import conflux.dex.service.HealthService;
 import conflux.dex.service.HealthService.PauseSource;
 import conflux.dex.service.blockchain.settle.Settleable;
 import conflux.dex.service.blockchain.settle.TransactionRecorder;
-import conflux.web3j.Account;
 import conflux.web3j.types.RawTransaction;
 import conflux.web3j.types.SendTransactionResult;
 
@@ -265,7 +264,12 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		}
 		tx.setGasPrice(gasPrice);
 
-		String[] txInfo = CfxTxSender.buildTx(admin, context.contract, nonce, epoch, context.data, gasPrice, context.gasLimit, context.storageLimit);
+		String[] txInfo;
+		if (this.config.evm) {
+			txInfo = SpringTool.getBean(EvmTxService.class).buildTx(context.contract.getHexAddress(), nonce, context.data, gasPrice, context.gasLimit);
+		} else {
+			txInfo = CfxTxSender.buildTx(admin, context.contract, nonce, epoch, context.data, gasPrice, context.gasLimit, context.storageLimit);
+		}
 		String signedTx = txInfo[0];
 		String txHash = txInfo[1];
 
