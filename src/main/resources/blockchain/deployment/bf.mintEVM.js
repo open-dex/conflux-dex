@@ -37,6 +37,7 @@ async function depositToken(name, wallet) {
 async function run() {
     const [,,cmd, arg1, arg2] = process.argv;
     let cfxUrl = process.env.EVM_RPC_URL;
+    console.log("evm rpc is ", cfxUrl)
     const cfx = ethers.getDefaultProvider(cfxUrl);
     wallet = new ethers.Wallet(process.env.BOOMFLOW_ADMIN_PRIVATE_KEY, cfx);
     sender = await wallet.getAddress();

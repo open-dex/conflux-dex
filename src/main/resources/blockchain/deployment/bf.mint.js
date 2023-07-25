@@ -5,6 +5,7 @@ const {getTokenAddress} = require('../tool/mysql')
 const erc777Contract = require('../TokenBase.json');
 const fcContract = require('../FC.json');
 
+console.log("rpc is ", process.env.CFX_URL)
 const cfx = new Conflux({
     url: process.env.CFX_URL,
 //    defaultGasPrice: 1,

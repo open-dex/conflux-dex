@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import conflux.dex.controller.AddressTool;
 import conflux.web3j.CfxUnit;
 import conflux.web3j.types.CfxAddress;
+import conflux.web3j.types.SendTransactionResult;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,8 +20,14 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.ClassPathResource;
+import org.web3j.abi.FunctionEncoder;
 import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.DynamicBytes;
+import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
+import org.web3j.crypto.Credentials;
+import org.web3j.crypto.TransactionEncoder;
+import org.web3j.protocol.core.Response;
 import org.web3j.utils.Numeric;
 
 import ch.qos.logback.classic.LoggerContext;
@@ -43,6 +50,7 @@ import conflux.web3j.contract.ERC777;
 import conflux.web3j.contract.abi.DecodeUtil;
 import conflux.web3j.response.Receipt;
 import conflux.web3j.types.RawTransaction;
+import sdk.EvmAccountManager;
 
 /**
  * Test order. btc and usdt here are not real BTC/USDT, they are just variable names.
@@ -273,25 +281,22 @@ class Context {
 	@Autowired
 	public void init(
 			@Value("${dex.url}") String dexUrl,
-			@Value("${dex.cfx.disabled}") boolean cfxDisabled,
 			@Value("${dex.cfx.url}") String cfxUrl,
+			@Value("${blockchain.isEVM}") boolean isEvm,
 			@Value("${user.keystore}") String keystore,
 			@Value("${user.keyfile.password}") String password) throws IOException,Exception {
 		this.dexClient = new Client(dexUrl);
-		this.cfx = cfxDisabled ? Optional.empty() : Optional.of(new CfxBuilder(cfxUrl).withRetry(3, 1000).withCallTimeout(3000).build());
+		this.cfx = Optional.of(new CfxBuilder(cfxUrl).withRetry(3, 1000).withCallTimeout(3000).build());
 		this.password = password;
 
-		if (this.cfx.isPresent()) {
-			System.out.println("cfx url is " + cfxUrl);
-			System.out.println("dex url is " + dexUrl);
-			BigInteger chainId = this.cfx.get().getStatus().sendAndGet().getChainId();
-			Domain.defaultChainId = chainId.longValueExact();
-			RawTransaction.setDefaultChainId(chainId);
-			this.am = new AccountManager(keystore, this.cfx.get().getIntNetworkId());
-		} else {
-			Domain.defaultChainId = this.dexClient.getChainId();
-			this.am = new AccountManager(keystore, Math.toIntExact(Domain.defaultChainId));
-		}
+		System.out.println("cfx url is " + cfxUrl);
+		System.out.println("dex url is " + dexUrl);
+		BigInteger chainId = this.cfx.get().getStatus().sendAndGet().getChainId();
+		Domain.defaultChainId = chainId.longValueExact();
+		RawTransaction.setDefaultChainId(chainId);
+		this.am = isEvm ?
+				new EvmAccountManager(keystore, chainId.intValue())
+				: new AccountManager(keystore, chainId.intValue());
 	}
 }
 
@@ -414,7 +419,9 @@ class Traders {
 		
 		BigInteger balance = context.cfx.get().getBalance(this.erc777User).sendAndGet();
 		if (balance.compareTo(BigInteger.ZERO) == 0) {
-			throw new Exception("CFX not enough for ERC777 user: " + this.erc777User);
+			System.out.println("CFX not enough for ERC777 user: "
+					+ this.erc777User + " hex " + this.erc777User.getHexAddress());
+			System.exit(0);
 		}
 		
 		System.out.println("Begin to deposit 10 BTCs and 100 USDTs for each trader ...");
@@ -441,19 +448,49 @@ class Traders {
         depositAmount = BigInteger.TEN.pow(currency.getDecimalDigits() + tenPower);
 		String tokenAddressHex = currency.getTokenAddress();
 		CfxAddress tokenAddress = new CfxAddress(tokenAddressHex, context.cfx.get().getIntNetworkId());
-		CfxAddress crclAddress = new CfxAddress(currency.getContractAddress(), context.cfx.get().getIntNetworkId());
+
+		String pk = context.am.exportPrivateKey(erc777Account.getAddress(), context.password);
+		Credentials credentials = Credentials.create(pk);
+		boolean isEvm = context.am instanceof EvmAccountManager;
 
 		this.ensureErc777Balance(context.cfx.get(), tokenAddress, depositAmount);
-        ERC777 usdtExecutor = new ERC777(context.cfx.get(), tokenAddress, erc777Account);
         String lastTxHash = "";
-        for (String recipient : this.tradersHex) {
-            lastTxHash = usdtExecutor.send(new Option(), crclAddress, depositAmount,
-					Numeric.hexStringToByteArray(recipient));
+
+		BigInteger gasPrice = erc777Account.getCfx().getGasPrice().sendAndGet().add(BigInteger.ONE);
+		for (String recipient : this.tradersHex) {
+			String functionData = this.encodeSendFunction(currency.getContractAddress(), depositAmount, recipient);
+			BigInteger gasLimit = BigInteger.valueOf(190_000L);
+			BigInteger storageLimit = BigInteger.valueOf(512L);
+			SendTransactionResult result;
+			if (isEvm) {
+				BigInteger ethValue = BigInteger.ZERO;
+				org.web3j.crypto.RawTransaction tx =
+						org.web3j.crypto.RawTransaction.createTransaction(erc777Account.getPoolNonce(), gasPrice, gasLimit,
+								tokenAddressHex, ethValue, functionData);
+				byte[] bytes = TransactionEncoder.signMessage(tx, credentials);
+				String signedTx = Numeric.toHexString(bytes);
+				result = context.cfx.get().sendRawTransactionAndGet(signedTx);
+			} else {
+				result = CfxTxSender.sendTx(erc777Account, tokenAddress, functionData, gasPrice, gasLimit, storageLimit);
+			}
+			Response.Error error = result.getRawError();
+			if (error != null) {
+				System.out.println("send tx fail");
+				System.out.println("error code "+ error.getCode() + " , message "+ error.getMessage() + " , data "+error.getData());
+				System.exit(0);
+			}
+			lastTxHash = result.getTxHash();
 			System.out.println("deposit " + currency.getName() + " x " + depositAmount
 					+ ", to " + recipient + ", hash " + lastTxHash);
         }
         return lastTxHash;
     }
+
+	String encodeSendFunction(String to, BigInteger amount, String recipientInData) {
+		byte[] data = Numeric.hexStringToByteArray(recipientInData);
+		Function function = new Function("send", Arrays.asList(new Address(to), new Uint256(amount), new DynamicBytes(data)), Collections.emptyList());
+		return FunctionEncoder.encode(function);
+	}
 
     private List<String> generateNewTraders(Context context) throws Exception {
 		System.out.printf("Begin to create %d traders to place orders ...\n", this.numTraders);
@@ -477,7 +514,8 @@ class Traders {
 	private void waitForReceiptAndNonce(Cfx cfx, String txHash, conflux.web3j.types.Address txSender, BigInteger expectedNonce) throws InterruptedException {
 		Receipt receipt = cfx.waitForReceipt(txHash);
 		if (receipt.getOutcomeStatus() != 0) {
-			throw new RuntimeException(String.format("Receipt failed, outcome = %s, tx = %s", receipt.getOutcomeStatus(), txHash));
+			System.out.println(String.format("Receipt failed, outcome = %s, tx = %s", receipt.getOutcomeStatus(), txHash));
+			System.exit(0);
 		}
 
 		cfx.waitForNonce(txSender, expectedNonce);
