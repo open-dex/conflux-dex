@@ -645,20 +645,6 @@ public class SystemController {
 
 	/**
 	 * @ignore
-	 * @return
-	 */
-	@AuthRequire
-	@PostMapping("/set-crcl-token")
-	public String setCrclTokenAddress(String crcl, String token) throws Exception{
-		Account admin = SpringTool.getBean(OrderBlockchain.class).getAdmin();
-		String tx = CrclContract.setTokenAddress(crcl, token, admin);
-		logger.info("set crcl's token, clcl {}, token {}, tx {}",
-				crcl, token, tx);
-		return tx;
-	}
-
-	/**
-	 * @ignore
 	 */
 	@AuthRequire
 	@PostMapping("/list-contract-abi-files")
