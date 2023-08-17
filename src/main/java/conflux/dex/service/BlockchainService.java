@@ -1,6 +1,7 @@
 package conflux.dex.service;
 
 import java.math.BigInteger;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -110,6 +111,16 @@ public class BlockchainService {
 		BigInteger pollEpochNum = this.event.getPollEpochFrom();
 		boolean more = this.event.getLatestLogs(deposits, schedule);
 		BigInteger nextPollEpochNum = this.event.getPollEpochFrom();
+
+		// Prevent double-deposit due to chain reorg.
+		Iterator<DepositData> iter = deposits.iterator();
+		while (iter.hasNext()) {
+			String txHash = iter.next().getTxHash();
+			if (this.dao.getDepositRecordByTxHash(txHash).isPresent()) {
+				iter.remove();
+				logger.error("Duplicated deposit record found, tx hash = {}", txHash);
+			}
+		}
 		
 		if (!deposits.isEmpty()) {
 			logger.info("polled deposit event logs: epochFrom = {}, epochToExclude = {}, count = {}", pollEpochNum, nextPollEpochNum, deposits.size());

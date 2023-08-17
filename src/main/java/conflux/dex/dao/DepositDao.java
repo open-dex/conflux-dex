@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.NavigableSet;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
@@ -24,6 +25,8 @@ import conflux.dex.model.PagingResult;
 public interface DepositDao {
 	
 	void addDepositRecord(DepositRecord record);
+
+	Optional<DepositRecord> getDepositRecordByTxHash(String txHash);
 	
 	PagingResult<DepositRecord> listDepositRecords(String userAddress, String currency, int offset, int limit, boolean asc);
 	PagingResult<DepositRecord> listDepositRecords(String userAddress, int offset, int limit, boolean asc);
@@ -38,6 +41,17 @@ class InMemoryDepositDao extends IdAllocator implements DepositDao {
 	public void addDepositRecord(DepositRecord record) {
 		record.setId(this.getNextId());
 		this.items.put(record.getId(), record);
+	}
+
+	@Override
+	public Optional<DepositRecord> getDepositRecordByTxHash(String txHash) {
+		for (DepositRecord record : this.items.values()) {
+			if (record.getTxHash().equalsIgnoreCase(txHash)) {
+				return Optional.of(record);
+			}
+		}
+
+		return Optional.empty();
 	}
 	
 	@Override
@@ -99,6 +113,13 @@ class DepositDaoImpl extends BaseDaoImpl implements DepositDao {
 		KeyHolder keyHolder = new GeneratedKeyHolder();
 		this.getJdbcTemplate().update(creator, keyHolder);
 		record.setId(keyHolder.getKey().longValue());
+	}
+
+	@Override
+	public Optional<DepositRecord> getDepositRecordByTxHash(String txHash) {
+		String sql = "SELECT * FROM t_deposit WHERE tx_hash = ?";
+		List<DepositRecord> records = this.getJdbcTemplate().query(sql, rowMapper, txHash);
+		return records.isEmpty() ? Optional.empty() : Optional.of(records.get(0));
 	}
 
 	@Override
