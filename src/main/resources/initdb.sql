@@ -278,7 +278,8 @@ CREATE TABLE IF NOT EXISTS t_deposit(
 	PRIMARY KEY (id),
 	FOREIGN KEY (user_address) REFERENCES t_user(name),
 	FOREIGN KEY (currency) REFERENCES t_currency(name),
-	KEY idx_u_c (user_address, currency)
+	KEY idx_u_c (user_address, currency),
+	KEY idx_tx_hash (tx_hash)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS t_withdraw (
