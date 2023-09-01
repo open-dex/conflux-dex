@@ -54,8 +54,8 @@ public class BlockchainConfig extends AutoConfigBase{
 	public BigInteger txGasLimitIntrinsic = BigInteger.valueOf(60000);
 	@Value("${blockchain.tx.limit.gas.trade.exec:300000}")
 	public int txGasLimitTrade = 300000;
-	@Value("${blockchain.tx.limit.gas.cancel.exec:15000}")
-	public int txGasLimitCancel = 15000;
+	@Value("${blockchain.tx.limit.gas.cancel.exec:150000}")
+	public int txGasLimitCancel = 150000;
 	@Value("${blockchain.tx.limit.gas.transfer.exec:30000}")
 	public int txGasLimitTransfer = 30000;
 	@Value("${blockchain.tx.limit.gas.withdraw:200000}")
