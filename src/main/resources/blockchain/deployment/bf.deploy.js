@@ -162,6 +162,17 @@ async function run() {
         console.info(`deploy crcl sent, wait nonce. cur ${nonce}`);
         //
         nonce = await waitNonce(JSBI.add(nonce, JSBI.BigInt(crcl_assets.length)), sender);
+
+        // add dex admin to WhitelistAdmin of CRCL contract
+        console.log(`\nAdd DEX Admin to CRCL WhitelistAdmin and Whitelisted, current nonce ${nonce}`)
+        let wait_list = [];
+        for (let i = 0; i < crcl_assets.length; ++i) {
+            wait_list.push(addWhitelisted(crcl_assets[i], dexAdmin, nonce, 'addWhitelistAdmin'));
+            nonce = JSBI.add(nonce, JSBI.BigInt(1));
+        }
+        log()
+        await Promise.all(wait_list);
+        nonce = await waitNonce(nonce, sender);
     }
     // codes below are fixing relationship.
     if (updateBoomflow || program.boomflowAdmin) {
