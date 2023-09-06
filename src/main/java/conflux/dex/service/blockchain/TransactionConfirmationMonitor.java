@@ -114,7 +114,7 @@ public class TransactionConfirmationMonitor {
 		try {
 			this.confirmTransactionsUnsafe();
 		} catch (Exception e) {
-			logger.debug("failed to confirm transaction", e);
+			logger.error("failed to confirm transaction", e);
 		}
 	}
 
@@ -141,14 +141,9 @@ public class TransactionConfirmationMonitor {
 		
 		while (!this.isSystemPaused() && !this.items.isEmpty() && result == CheckConfirmationResult.Confirmed) {
 			Settleable settleable = this.items.firstEntry().getValue();
-			
-			// break out if not confirmed yet
-			if (settleable.getSettledEpoch().compareTo(confirmedEpoch) > 0) {
-				break;
-			}
-			
+
 			result = this.checkConfirmation(settleable, confirmedEpoch);
-			boolean removeMonitorItem = true;
+			boolean removeMonitorItem = false;
 			
 			switch (result) {
 			case Discarded:
@@ -165,10 +160,10 @@ public class TransactionConfirmationMonitor {
 				break;
 			case NotConfirmed:
 				logger.debug("transaction not confirmed, hash = {}, confirmed epoch = {}", settleable.getSettledTxHash(), confirmedEpoch);
-				removeMonitorItem = false;
 				break;
 			case Confirmed:
 				settleable.updateSettlement(this.dao, SettlementStatus.OnChainConfirmed);
+				removeMonitorItem = true;
 				break;
 			default:
 				throw BusinessException.internalError("unsupported CheckConfirmationResult: " + result);
@@ -204,7 +199,7 @@ public class TransactionConfirmationMonitor {
 
 		if (receipt.get().getOutcomeStatus() != 0) {
 			// dump data from contract for diagnostic
-			logger.info("begin to dump failed epoch...");
+			logger.info("begin to dump failed tx {}", packedTxHash);
 			try {
 				NodejsWrapper.dump(this.cfxUrl, packedTxHash);
 				logger.info("complete to dump failed epoch");
