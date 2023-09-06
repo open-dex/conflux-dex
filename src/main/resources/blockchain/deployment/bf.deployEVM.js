@@ -167,9 +167,7 @@ async function run() {
             })
         )
         console.info(`deploy crcl done`);
-        //
-    }
-    if (updateCRCL) {
+
         // add dex admin to WhitelistAdmin, for withdraw.
         console.log(`\nAdd DEX Admin to CRCL WhitelistAdmin, current nonce ${nonce}`)
         let wait_list = [];
