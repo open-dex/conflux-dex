@@ -167,9 +167,16 @@ async function run() {
             })
         )
         console.info(`deploy crcl done`);
-        //
-    }
 
+        // add dex admin to WhitelistAdmin, for withdraw.
+        console.log(`\nAdd DEX Admin to CRCL WhitelistAdmin, current nonce ${nonce}`)
+        let wait_list = [];
+        for (let i = 0; i < crcl_assets.length; ++i) {
+            wait_list.push(addWhitelisted(crcl_assets[i], dexAdmin, nonce++, 'addWhitelistAdmin'));
+        }
+        log()
+        await Promise.all(wait_list);
+    }
     if (updateBoomflow || program.boomflowAdmin) {
 //        await callBoomflow(boomflowAddr, 'Resume')
 //        return
@@ -293,7 +300,7 @@ function buildTxParam(nonce) {
  * @param nonce
  * @returns {Promise<unknown>}
  */
-async function addWhitelisted(token, addr, what, useNonce) {
+async function addWhitelisted(token, addr, useNonce, what) {
     const crclAddr = token.crclAddress;
     const realContract = await crcl.attach(crclAddr);
     console.info(`LOG_MARK_01 #  nonce ${useNonce} , add ${addr} to ${what} of CRCL ${token.name} ${crclAddr}, begin`);
