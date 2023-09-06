@@ -142,8 +142,12 @@ public class TransactionConfirmationMonitor {
 		while (!this.isSystemPaused() && !this.items.isEmpty() && result == CheckConfirmationResult.Confirmed) {
 			Settleable settleable = this.items.firstEntry().getValue();
 
+			// break out if not confirmed yet
+			if (settleable.getSettledEpoch().compareTo(confirmedEpoch) > 0) {
+				break;
+			}
 			result = this.checkConfirmation(settleable, confirmedEpoch);
-			boolean removeMonitorItem = false;
+			boolean removeMonitorItem = true;
 			
 			switch (result) {
 			case Discarded:
@@ -160,10 +164,10 @@ public class TransactionConfirmationMonitor {
 				break;
 			case NotConfirmed:
 				logger.debug("transaction not confirmed, hash = {}, confirmed epoch = {}", settleable.getSettledTxHash(), confirmedEpoch);
+				removeMonitorItem = false;
 				break;
 			case Confirmed:
 				settleable.updateSettlement(this.dao, SettlementStatus.OnChainConfirmed);
-				removeMonitorItem = true;
 				break;
 			default:
 				throw BusinessException.internalError("unsupported CheckConfirmationResult: " + result);
@@ -305,7 +309,9 @@ public class TransactionConfirmationMonitor {
 		
 		settleable.updateSettlement(this.dao, SettlementStatus.OnChainFailed);
 		
-		if (!settleable.suppressError(errorData)) {
+		if (settleable.suppressError(errorData)) {
+			logger.info("suppress tx error {} , hash {}, settleable {}", errorData, receipt.getTransactionHash(), settleable);
+		} else {
 			String error = String.format("transaction execution failed: tx hash = %s, errorData = %s, settleable = %s", txHash, errorData, settleable);
 			logger.error(error);
 			this.healthService.pause(PauseSource.Blockchain, error);
