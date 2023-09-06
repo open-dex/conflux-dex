@@ -302,7 +302,7 @@ function buildTxParam(nonce) {
  * @param nonce
  * @returns {Promise<unknown>}
  */
-async function addWhitelisted(token, addr, what, useNonce) {
+async function addWhitelisted(token, addr, useNonce, what) {
     const crclAddr = token.crclAddress;
     const realContract = await crcl.attach(crclAddr);
     console.info(`LOG_MARK_01 #  nonce ${useNonce} , add ${addr} to ${what} of CRCL ${token.name} ${crclAddr}, begin`);
