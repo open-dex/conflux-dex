@@ -169,7 +169,16 @@ async function run() {
         console.info(`deploy crcl done`);
         //
     }
-
+    if (updateCRCL) {
+        // add dex admin to WhitelistAdmin, for withdraw.
+        console.log(`\nAdd DEX Admin to CRCL WhitelistAdmin, current nonce ${nonce}`)
+        let wait_list = [];
+        for (let i = 0; i < crcl_assets.length; ++i) {
+            wait_list.push(addWhitelisted(crcl_assets[i], dexAdmin, nonce++, 'addWhitelistAdmin'));
+        }
+        log()
+        await Promise.all(wait_list);
+    }
     if (updateBoomflow || program.boomflowAdmin) {
 //        await callBoomflow(boomflowAddr, 'Resume')
 //        return
