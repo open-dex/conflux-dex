@@ -22,8 +22,8 @@ public class BlockchainPruneConfig {
 	@Value("${blockchain.prune.order.upload.batch:100}")
 	public int uploadOrderBatchSize = 100;
 	
-	@Value("${blockchain.prune.order.upload.gas.exec:30000}")
-	public int uploadOrderGasLimit = 30_000;
+	@Value("${blockchain.prune.order.upload.gas.exec:300000}")
+	public int uploadOrderGasLimit = 300_000;
 	
 	@Value("${blockchain.prune.order.delete.gas.exec:40000}")
 	public int deleteOrderGasLimit = 40000;
