@@ -23,7 +23,8 @@ public class Utils {
 	static ExclusionStrategy strategy = new ExclusionStrategy() {
 		@Override
 		public boolean shouldSkipField(FieldAttributes field) {
-			if (field.getDeclaringClass() == StaticStruct.class && field.getName().equals("itemTypes")) {
+			System.out.println(field.getDeclaringClass().toString()+" "+field.getName()+" "+field.getDeclaredClass());
+			if (field.getDeclaringClass().equals(StaticStruct.class) && field.getName().equals("itemTypes")) {
 				return true;
 			}
 			return false;
