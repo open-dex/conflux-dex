@@ -114,7 +114,7 @@ public class TransactionConfirmationMonitor {
 		try {
 			this.confirmTransactionsUnsafe();
 		} catch (Exception e) {
-			logger.debug("failed to confirm transaction", e);
+			logger.error("failed to confirm transaction", e);
 		}
 	}
 
