@@ -24,10 +24,9 @@ public class Utils {
 		@Override
 		public boolean shouldSkipField(FieldAttributes field) {
 			System.out.println(field.getDeclaringClass().toString()+" "+field.getName()+" "+field.getDeclaredClass());
-			if (field.getDeclaringClass().equals(StaticStruct.class) && field.getName().equals("itemTypes")) {
-				return true;
-			}
-			return false;
+			return (field.getDeclaringClass().equals(StaticStruct.class) && field.getName().equals("itemTypes"))
+				|| (field.getDeclaringClass().equals(org.web3j.abi.datatypes.Array.class) && field.getName().equals("type"))
+					;
 		}
 
 		@Override

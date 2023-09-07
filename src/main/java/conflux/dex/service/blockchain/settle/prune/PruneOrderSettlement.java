@@ -52,13 +52,6 @@ class UploadPendingOrdersSettlement extends PruneOrderSettlement {
 		// do nothing
 	}
 
-	public List<TypedOrder> getOrders() {
-		return orders;
-	}
-
-	public void setOrders(List<TypedOrder> orders) {
-		this.orders = orders;
-	}
 }
 
 class DeleteHistoricalOrdersSettlement extends PruneOrderSettlement {
