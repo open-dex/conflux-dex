@@ -5,6 +5,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
+import conflux.dex.blockchain.TypedOrder;
 import org.springframework.core.io.ClassPathResource;
 
 import com.google.gson.Gson;
@@ -15,9 +18,26 @@ import conflux.web3j.RpcException;
 public class Utils {
 	
 	private static final BigDecimal TEN_POW_18 = new BigDecimal(BigInteger.TEN.pow(18));
-	
+
+	static ExclusionStrategy strategy = new ExclusionStrategy() {
+		@Override
+		public boolean shouldSkipField(FieldAttributes field) {
+			if (field.getDeclaringClass() == TypedOrder.class && field.getName().equals("itemTypes")) {
+				return true;
+			}
+			return false;
+		}
+
+		@Override
+		public boolean shouldSkipClass(Class<?> clazz) {
+			return false;
+		}
+	};
+
+
 	private static final Gson GSON = new GsonBuilder()
 			.setDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+			.addSerializationExclusionStrategy(strategy)
 			.serializeNulls()
 			.create();
 	
