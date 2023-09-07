@@ -14,6 +14,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import conflux.web3j.RpcException;
+import org.web3j.abi.datatypes.StaticStruct;
 
 public class Utils {
 	
@@ -22,7 +23,7 @@ public class Utils {
 	static ExclusionStrategy strategy = new ExclusionStrategy() {
 		@Override
 		public boolean shouldSkipField(FieldAttributes field) {
-			if (field.getDeclaringClass() == TypedOrder.class && field.getName().equals("itemTypes")) {
+			if (field.getDeclaringClass() == StaticStruct.class && field.getName().equals("itemTypes")) {
 				return true;
 			}
 			return false;
