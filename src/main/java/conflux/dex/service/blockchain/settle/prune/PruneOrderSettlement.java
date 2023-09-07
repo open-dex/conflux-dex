@@ -33,7 +33,7 @@ public abstract class PruneOrderSettlement extends PruneSettlement {
 }
 
 class UploadPendingOrdersSettlement extends PruneOrderSettlement {
-
+	
 	private List<TypedOrder> orders;
 
 	public UploadPendingOrdersSettlement(List<TypedOrder> orders, BigInteger gasLimit) {
@@ -51,7 +51,7 @@ class UploadPendingOrdersSettlement extends PruneOrderSettlement {
 	protected void update(DexDao dao, SettlementStatus status, String txHash, long txNonce) {
 		// do nothing
 	}
-
+	
 }
 
 class DeleteHistoricalOrdersSettlement extends PruneOrderSettlement {
