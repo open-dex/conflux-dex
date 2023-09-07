@@ -310,8 +310,10 @@ public class TransactionConfirmationMonitor {
 		
 		settleable.updateSettlement(this.dao, SettlementStatus.OnChainFailed);
 		
-		if (!settleable.suppressError(errorData)) {
-			String error = String.format("transaction execution failed: tx hash = %s, errorData = %s, settleable = %s", txHash, errorData, settleable);
+		String error = String.format("transaction execution failed: tx hash = %s, errorData = %s, settleable = %s", txHash, errorData, settleable);
+		if (settleable.suppressError(errorData)) {
+			logger.warn("suppressError: {}", error);
+		} else {
 			logger.error(error);
 			this.healthService.pause(PauseSource.Blockchain, error);
 		}
