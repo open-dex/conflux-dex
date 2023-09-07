@@ -5,19 +5,43 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
+import conflux.dex.blockchain.TypedOrder;
 import org.springframework.core.io.ClassPathResource;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import conflux.web3j.RpcException;
+import org.web3j.abi.datatypes.StaticStruct;
 
 public class Utils {
 	
 	private static final BigDecimal TEN_POW_18 = new BigDecimal(BigInteger.TEN.pow(18));
-	
+
+	/**
+	 * When serializing UploadPendingOrdersSettlement, there is an exception `java.lang.UnsupportedOperationException`,
+	 * skip these fields to avoid it.
+	 */
+	static ExclusionStrategy strategy = new ExclusionStrategy() {
+		@Override
+		public boolean shouldSkipField(FieldAttributes field) {
+			return (field.getDeclaringClass().equals(StaticStruct.class) && field.getName().equals("itemTypes"))
+				|| (field.getDeclaringClass().equals(org.web3j.abi.datatypes.Array.class) && field.getName().equals("type"))
+					;
+		}
+
+		@Override
+		public boolean shouldSkipClass(Class<?> clazz) {
+			return false;
+		}
+	};
+
+
 	private static final Gson GSON = new GsonBuilder()
 			.setDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+			.addSerializationExclusionStrategy(strategy)
 			.serializeNulls()
 			.create();
 	
