@@ -20,10 +20,13 @@ public class Utils {
 	
 	private static final BigDecimal TEN_POW_18 = new BigDecimal(BigInteger.TEN.pow(18));
 
+	/**
+	 * When serializing UploadPendingOrdersSettlement, there is an exception `java.lang.UnsupportedOperationException`,
+	 * skip these fields to avoid it.
+	 */
 	static ExclusionStrategy strategy = new ExclusionStrategy() {
 		@Override
 		public boolean shouldSkipField(FieldAttributes field) {
-			System.out.println(field.getDeclaringClass().toString()+" "+field.getName()+" "+field.getDeclaredClass());
 			return (field.getDeclaringClass().equals(StaticStruct.class) && field.getName().equals("itemTypes"))
 				|| (field.getDeclaringClass().equals(org.web3j.abi.datatypes.Array.class) && field.getName().equals("type"))
 					;
