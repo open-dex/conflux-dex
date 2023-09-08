@@ -11,6 +11,8 @@ import conflux.dex.service.NonceKeeper;
 import conflux.dex.tool.CfxTxSender;
 import conflux.dex.tool.SpringTool;
 import conflux.web3j.AMNAccount;
+import conflux.web3j.request.Call;
+import conflux.web3j.response.UsedGasAndCollateral;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -280,6 +282,15 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		
 		try (Context ctx = perfSendTx.time()) {
 			// For re-send case, do not update the local tx nonce of DEX admin.
+			Call request = new Call();
+			request.setNonce(nonce);
+			request.setValue(BigInteger.ZERO);
+			request.setGasPrice(tx.getGasPrice());
+			request.setData(tx.getData());
+			request.setFrom(admin.getAddress());
+			request.setTo(tx.getTo());
+			UsedGasAndCollateral usedGasAndCollateral = admin.getCfx().estimateGasAndCollateral(request).sendAndGet();
+			System.out.println("gas "+usedGasAndCollateral.getGasUsed());
 			result = admin.getCfx().sendRawTransactionAndGet(signedTx);
 			if (!resendOnError) {
 				admin.setNonce(nonce.add(BigInteger.ONE));
