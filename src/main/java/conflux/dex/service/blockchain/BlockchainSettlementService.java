@@ -281,7 +281,7 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		SendTransactionResult result;
 		
 		try (Context ctx = perfSendTx.time()) {
-			GasTool.estimate(tx, admin.getAddress(), admin.getCfx());
+			GasTool.estimate(tx, admin.getAddress(), admin.getCfx(), txHash);
 			// For re-send case, do not update the local tx nonce of DEX admin.
 			result = admin.getCfx().sendRawTransactionAndGet(signedTx);
 			if (!resendOnError) {
