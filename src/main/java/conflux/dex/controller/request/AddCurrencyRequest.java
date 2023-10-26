@@ -28,9 +28,7 @@ public class AddCurrencyRequest extends AdminRequest {
 	@Override
 	protected void validate() {
 		Validators.validateName(this.currency.getName(), Currency.MAX_LEN, "currency name");
-		Validators.validateAddress(this.currency.getContractAddress(), AddressType.Contract, "CRCL address");
-		Validators.validateAddress(this.currency.getTokenAddress(), AddressType.Contract, "ERC777 address");
-		
+
 		if (this.currency.getDecimalDigits() != Currency.MAX_DECIMALS) {
 			throw BusinessException.validateFailed("decimal digits should be %s", Currency.MAX_DECIMALS);
 		}

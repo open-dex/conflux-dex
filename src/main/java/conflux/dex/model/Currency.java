@@ -97,7 +97,9 @@ public class Currency {
 
 	public void setContractAddress(String contractAddress) {
 		this.contractAddress = contractAddress;
-		this.contractBase32Address = AddressTool.toBase32(contractAddress);
+		if (contractAddress.length() == 42) {
+			this.contractBase32Address = AddressTool.toBase32(contractAddress);
+		}
 	}
 	
 	public String getTokenAddress() {

@@ -99,9 +99,15 @@ public class NodejsWrapper {
 	}
 
 	public static String deployToken(String name) {
+		String jsPath;
+		if (BlockchainConfig.instance.isEvm()) {
+			jsPath = "blockchain/deployment/bf.deployEVM.js";
+		} else {
+			jsPath = "blockchain/deployment/bf.deploy.js";
+		}
 		return executeOSCommand(Arrays.asList("node",
-				Utils.getResource("blockchain/deployment/bf.deploy.js"),
-				"--crcl", "--token", "--c_name", name));
+				Utils.getResource(jsPath),
+				"--crcl", "--c_name", name));
 	}
 
 	public static Map<Object, Object> processStatus(String logFilePath) {

@@ -3,6 +3,7 @@ package conflux.dex.controller;
 import java.util.List;
 import java.util.Optional;
 
+import conflux.dex.blockchain.EventBlockchain;
 import conflux.dex.config.AuthRequire;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,6 +50,8 @@ public class ProductController {
 	private String adminAddress;
 	
 	private Object lock = new Object();
+	@Autowired
+	EventBlockchain eventBlockchain;
 	
 	@Autowired
 	public ProductController(DexDao dao, EngineService service, DailyLimitService dailyLimitService) {
@@ -75,7 +78,9 @@ public class ProductController {
 		}
 		
 		this.service.addEngine(product);
-		
+		// notify event service to fetch deposit.
+		Currency data = this.dao.getCurrency(product.getBaseCurrencyId()).mustGet();
+		eventBlockchain.addAddress(data.getContractAddress(), true);
 		return product;
 	}
 

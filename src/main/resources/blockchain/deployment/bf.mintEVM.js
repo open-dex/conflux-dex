@@ -51,14 +51,9 @@ async function run() {
         return
     }
 
-    const EOS_contract = await buildContract('EOS', erc777Contract.abi);
-    const KCoin_contract = await buildContract('KCoin', erc777Contract.abi);
-    const USDT_contract = await buildContract('USDT', erc777Contract.abi);
-    var assets = [
-        EOS_contract,
-        KCoin_contract,
-        USDT_contract,
-    ];
+    var assets = await Promise.all([
+        'EOS', 'KCoin', 'USDT',
+    ].map(name=>buildContract(name, erc777Contract.abi)));
 
     const users = [
         '0x13f1102173449494e3c35d9bb5a2a6a251127247',
