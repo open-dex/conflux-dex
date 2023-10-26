@@ -79,8 +79,8 @@ public class ProductController {
 		
 		this.service.addEngine(product);
 		// notify event service to fetch deposit.
-		Currency data = this.dao.getCurrency(product.getBaseCurrencyId()).mustGet();
-		eventBlockchain.addAddress(data.getContractAddress(), true);
+		Currency currency = this.dao.getCurrency(product.getBaseCurrencyId()).mustGet();
+		eventBlockchain.addAddress(currency.getContractAddress(), true);
 		return product;
 	}
 
