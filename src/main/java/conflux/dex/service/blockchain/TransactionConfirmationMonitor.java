@@ -141,12 +141,12 @@ public class TransactionConfirmationMonitor {
 		
 		while (!this.isSystemPaused() && !this.items.isEmpty() && result == CheckConfirmationResult.Confirmed) {
 			Settleable settleable = this.items.firstEntry().getValue();
-			//
+
 			// break out if not confirmed yet
 			if (settleable.getSettledEpoch().compareTo(confirmedEpoch) > 0) {
 				break;
 			}
-			//
+
 			result = this.checkConfirmation(settleable, confirmedEpoch);
 			boolean removeMonitorItem = true;
 			
