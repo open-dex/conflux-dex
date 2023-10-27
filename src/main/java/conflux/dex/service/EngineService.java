@@ -224,6 +224,7 @@ public class EngineService implements Runnable, Handler<Log> {
 		}
 		createProduct(product);
 		productMap.put(product.getId(), product);
+		logger.info("addEngine for product {}", product.getName());
 		return true;
 	}
 

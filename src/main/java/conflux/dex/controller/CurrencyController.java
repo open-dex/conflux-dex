@@ -2,22 +2,21 @@ package conflux.dex.controller;
 
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import conflux.dex.blockchain.crypto.Domain;
 import conflux.dex.config.AuthRequire;
 import conflux.dex.service.BlockchainService;
 import conflux.dex.tool.SpringTool;
+import conflux.web3j.Cfx;
+import conflux.web3j.contract.ContractCall;
+import conflux.web3j.contract.abi.DecodeUtil;
 import conflux.web3j.types.Address;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,6 +36,8 @@ import conflux.dex.model.CrossChainToken;
 import conflux.dex.model.Currency;
 import conflux.dex.model.PagingResult;
 import conflux.dex.service.ShuttleflowService;
+import org.web3j.abi.datatypes.Utf8String;
+import org.web3j.abi.datatypes.generated.Uint256;
 
 /**
  * Currency management
@@ -82,6 +83,18 @@ public class CurrencyController {
 		return CrossChainToken.fakeFee;
 	}
 
+	@GetMapping("/get-token-info")
+	public HashMap<String, String> getTokenInfo(String hex) {
+		Cfx cfx = SpringTool.getBean(Cfx.class);
+		ContractCall call = new ContractCall(cfx, AddressTool.address(hex));
+		String name = call.call("symbol").sendAndGet();
+		String decimals = call.call("decimals").sendAndGet();
+		HashMap<String, String> ret = new HashMap<>();
+		ret.put("name", name.equals("0x") ? "" : DecodeUtil.decode(name, Utf8String.class));
+		ret.put("decimals", decimals.equals("0x") ? "" : DecodeUtil.decode(decimals, Uint256.class).toString());
+		return ret;
+	}
+
 	/**
 	 * @ignore
 	 */
@@ -116,8 +129,9 @@ public class CurrencyController {
 		if (!this.dao.addCurrency(currency)) {
 			throw BusinessFault.CurrencyAlreadyExists.rise();
 		}
-		
-		Events.NEW_CURRENCY_ADDED.fire(currency);
+		if (!StringUtils.isEmpty(currency.getContractAddress())) {
+			Events.NEW_CURRENCY_ADDED.fire(currency);
+		}
 		
 		return currency;
 	}

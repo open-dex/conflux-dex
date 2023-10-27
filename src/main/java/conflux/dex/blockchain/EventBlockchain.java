@@ -81,8 +81,14 @@ public class EventBlockchain implements InfluxDBReportable {
 	}
     
     public void addAddress(String address) {
-		Validators.validateAddress(address, AddressType.Contract, "contract address");
+		addAddress(address, false);
+	}
+    public void addAddress(String address, boolean silent) {
 		if (this.addresses.stream().anyMatch(addr->addr.getHexAddress().equalsIgnoreCase(address))) {
+			if (silent) {
+				logger.warn("address already added {}", address);
+				return;
+			}
 			throw BusinessException.validateFailed("already added:" + address);
 		}
 		this.addresses.add(AddressTool.address(address));
