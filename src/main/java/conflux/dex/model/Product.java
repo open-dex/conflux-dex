@@ -51,7 +51,7 @@ public class Product {
 	 */
 	private BigDecimal minOrderFunds;
 
-	private Boolean enable;
+	private boolean disabled;
 	
 	public int getId() {
 		return id;
@@ -133,12 +133,12 @@ public class Product {
 		this.minOrderFunds = minOrderFunds;
 	}
 
-	public Boolean getEnable() {
-		return enable;
+	public Boolean isDisabled() {
+		return disabled;
 	}
 
-	public void setEnable(Boolean enable) {
-		this.enable = enable;
+	public void setDisabled(Boolean disabled) {
+		this.disabled = disabled;
 	}
 
 	@Override

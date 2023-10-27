@@ -271,14 +271,14 @@ public class ProductController {
 	 */
 	@GetMapping
 	public ProductPagingResult list(
-			@RequestParam(required = false, defaultValue = "true") Boolean filter,
 			@RequestParam(required = false, defaultValue = "0") int offset,
-			@RequestParam(required = false, defaultValue = "10") int limit) {
+			@RequestParam(required = false, defaultValue = "10") int limit,
+			@RequestParam(required = false, defaultValue = "true") Boolean filter) {
 		Validators.validatePaging(offset, limit, 20);
 		// use cache from DAO, and filter in memory.
 		List<Product> all = this.dao.listProducts();
 		if (filter) {
-			all = all.stream().filter(Product::getEnable).collect(Collectors.toList());
+			all = all.stream().filter(product -> !product.isDisabled()).collect(Collectors.toList());
 		}
 		PagingResult<Product> paging = PagingResult.fromList(offset, limit, all);
 		return new ProductPagingResult(paging);
