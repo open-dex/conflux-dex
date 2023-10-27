@@ -206,7 +206,9 @@ public class PlaceOrderRequest {
 		if (this.clientOrderId != null && this.clientOrderId.length() > Order.MAX_CLIENT_ORDER_ID_LEN) {
 			throw BusinessException.validateFailed("client order id length exceed %d", Order.MAX_CLIENT_ORDER_ID_LEN);
 		}
-		
+		if (product.isDisabled()) {
+			throw BusinessException.validateFailed("This product is disabled.");
+		}
 		Validators.validateAddress(this.address, AddressType.User, "user address");
 		Validators.validateName(this.product, Product.MAX_LEN, "product");
 		Validators.nonNull(this.type, "order type");

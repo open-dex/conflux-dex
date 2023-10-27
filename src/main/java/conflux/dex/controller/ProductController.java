@@ -273,7 +273,7 @@ public class ProductController {
 	public ProductPagingResult list(
 			@RequestParam(required = false, defaultValue = "0") int offset,
 			@RequestParam(required = false, defaultValue = "10") int limit,
-			@RequestParam(required = false, defaultValue = "true") Boolean filter) {
+			@RequestParam(required = false, defaultValue = "true") boolean filter) {
 		Validators.validatePaging(offset, limit, 20);
 		// use cache from DAO, and filter in memory.
 		List<Product> all = this.dao.listProducts();

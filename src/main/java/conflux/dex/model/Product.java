@@ -133,11 +133,11 @@ public class Product {
 		this.minOrderFunds = minOrderFunds;
 	}
 
-	public Boolean isDisabled() {
+	public boolean isDisabled() {
 		return disabled;
 	}
 
-	public void setDisabled(Boolean disabled) {
+	public void setDisabled(boolean disabled) {
 		this.disabled = disabled;
 	}
 
