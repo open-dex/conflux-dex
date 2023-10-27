@@ -19,11 +19,11 @@ public class BlockchainPruneConfig {
 	public BigInteger updateTimestampGasLimit = BigInteger.valueOf(300000);
 	
 	// Configurations for order prune
-	@Value("${blockchain.prune.order.upload.batch:100}")
-	public int uploadOrderBatchSize = 100;
+	@Value("${blockchain.prune.order.upload.batch:50}")
+	public int uploadOrderBatchSize = 50;
 	
-	@Value("${blockchain.prune.order.upload.gas.exec:30000}")
-	public int uploadOrderGasLimit = 30_000;
+	@Value("${blockchain.prune.order.upload.gas.exec:230000}")
+	public int uploadOrderGasLimit = 230_000;
 	
 	@Value("${blockchain.prune.order.delete.gas.exec:40000}")
 	public int deleteOrderGasLimit = 40000;
