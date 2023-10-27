@@ -134,6 +134,7 @@ class ProductDaoImpl extends BaseDaoImpl implements ProductDao {
 			product.setMinOrderAmount(rs.getBigDecimal("min_order_amount").stripTrailingZeros());
 			product.setMaxOrderAmount(rs.getBigDecimal("max_order_amount").stripTrailingZeros());
 			product.setMinOrderFunds(rs.getBigDecimal("min_order_funds").stripTrailingZeros());
+			product.setDisabled(rs.getBoolean("disabled"));
 			
 			return product;
 		}
