@@ -50,6 +50,8 @@ public class Product {
 	 * Minimum order funds. (For limit orders, funds = order.price * order.amount; for market-buy orders, funds = order.amount)
 	 */
 	private BigDecimal minOrderFunds;
+
+	private Boolean enable;
 	
 	public int getId() {
 		return id;
@@ -129,6 +131,14 @@ public class Product {
 
 	public void setMinOrderFunds(BigDecimal minOrderFunds) {
 		this.minOrderFunds = minOrderFunds;
+	}
+
+	public Boolean getEnable() {
+		return enable;
+	}
+
+	public void setEnable(Boolean enable) {
+		this.enable = enable;
 	}
 
 	@Override

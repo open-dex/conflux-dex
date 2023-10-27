@@ -2,6 +2,7 @@ package conflux.dex.controller;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import conflux.dex.blockchain.EventBlockchain;
 import conflux.dex.config.AuthRequire;
@@ -77,10 +78,11 @@ public class ProductController {
 			this.dao.addProduct(product);
 		}
 		
-		this.service.addEngine(product);
 		// notify event service to fetch deposit.
-		Currency currency = this.dao.getCurrency(product.getBaseCurrencyId()).mustGet();
-		eventBlockchain.addAddress(currency.getContractAddress(), true);
+		eventBlockchain.addAddress(this.dao.getCurrency(product.getBaseCurrencyId()).mustGet().getContractAddress(), true);
+		eventBlockchain.addAddress(this.dao.getCurrency(product.getQuoteCurrencyId()).mustGet().getContractAddress(), true);
+		// add engine if everything goes well.
+		this.service.addEngine(product);
 		return product;
 	}
 
@@ -269,11 +271,15 @@ public class ProductController {
 	 */
 	@GetMapping
 	public ProductPagingResult list(
-			@RequestParam(required = false, defaultValue = "0") int offset, 
+			@RequestParam(required = false, defaultValue = "true") Boolean filter,
+			@RequestParam(required = false, defaultValue = "0") int offset,
 			@RequestParam(required = false, defaultValue = "10") int limit) {
 		Validators.validatePaging(offset, limit, 20);
+		// use cache from DAO, and filter in memory.
 		List<Product> all = this.dao.listProducts();
-//		all = all.stream().filter(p->!p.getName().equalsIgnoreCase("FC-USDT")).collect(Collectors.toList());
+		if (filter) {
+			all = all.stream().filter(Product::getEnable).collect(Collectors.toList());
+		}
 		PagingResult<Product> paging = PagingResult.fromList(offset, limit, all);
 		return new ProductPagingResult(paging);
 	}
