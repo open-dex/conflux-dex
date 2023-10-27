@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS t_product (
 	min_order_amount DECIMAL(32,18) NOT NULL,
 	max_order_amount DECIMAL(32,18) NOT NULL,
 	min_order_funds DECIMAL(32,18) NOT NULL,
+    enable BOOLEAN NOT NULL DEFAULT TRUE,
 	instant_exchange BOOLEAN DEFAULT FALSE,
 	base_product_id INT,
 	quote_product_id INT,
