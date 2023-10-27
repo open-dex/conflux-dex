@@ -146,6 +146,7 @@ public class TransactionConfirmationMonitor {
 			if (settleable.getSettledEpoch().compareTo(confirmedEpoch) > 0) {
 				break;
 			}
+
 			result = this.checkConfirmation(settleable, confirmedEpoch);
 			boolean removeMonitorItem = true;
 			
