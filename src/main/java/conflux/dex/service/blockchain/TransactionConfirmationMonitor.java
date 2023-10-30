@@ -30,7 +30,6 @@ import conflux.dex.service.blockchain.settle.Settleable;
 import conflux.dex.service.blockchain.settle.TransactionRecorder;
 import conflux.web3j.Cfx;
 import conflux.web3j.RpcException;
-import conflux.web3j.contract.diagnostics.Recall;
 import conflux.web3j.request.Epoch;
 import conflux.web3j.response.Receipt;
 
@@ -132,7 +131,8 @@ public class TransactionConfirmationMonitor {
 			throw BusinessException.validateFailed("tx not found in memory, it may be finished: " + txNonce);
 		}
 		BigInteger confirmedEpoch = this.cfx.getEpochNumber(Epoch.latestConfirmed()).sendAndGet();
-		return checkConfirmation(settleable, confirmedEpoch);
+		Optional<Receipt> receipt = settleable.getRecorder().getReceipt(this.cfx);
+		return checkConfirmation(settleable, confirmedEpoch, receipt);
 	}
 	
 	public void confirmTransactionsUnsafe() throws RpcException, InterruptedException {
@@ -141,13 +141,14 @@ public class TransactionConfirmationMonitor {
 		
 		while (!this.isSystemPaused() && !this.items.isEmpty() && result == CheckConfirmationResult.Confirmed) {
 			Settleable settleable = this.items.firstEntry().getValue();
-
-			// break out if not confirmed yet
-			if (settleable.getSettledEpoch().compareTo(confirmedEpoch) > 0) {
+			Optional<Receipt> receipt = settleable.getRecorder().getReceipt(this.cfx);
+			boolean failed = receipt.isPresent() && receipt.get().getOutcomeStatus() != 0;
+			// break out if not confirmed yet and not failed
+			if (!failed && settleable.getSettledEpoch().compareTo(confirmedEpoch) > 0) {
 				break;
 			}
 
-			result = this.checkConfirmation(settleable, confirmedEpoch);
+			result = this.checkConfirmation(settleable, confirmedEpoch, receipt);
 			boolean removeMonitorItem = true;
 			
 			switch (result) {
@@ -181,10 +182,8 @@ public class TransactionConfirmationMonitor {
 		}
 	}
 	
-	private CheckConfirmationResult checkConfirmation(Settleable settleable, BigInteger confirmedEpoch) throws RpcException, InterruptedException {
+	private CheckConfirmationResult checkConfirmation(Settleable settleable, BigInteger confirmedEpoch, Optional<Receipt> receipt) throws RpcException, InterruptedException {
 		long start = System.currentTimeMillis();
-		
-		Optional<Receipt> receipt = settleable.getRecorder().getReceipt(this.cfx);
 		
 		// transaction unpacked yet
 		if (!receipt.isPresent()) {
