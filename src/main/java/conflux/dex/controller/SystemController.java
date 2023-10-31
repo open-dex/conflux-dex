@@ -68,7 +68,6 @@ import conflux.dex.service.blockchain.TransactionConfirmationMonitor;
 import conflux.dex.service.blockchain.settle.Settleable;
 import conflux.dex.tool.SpringTool;
 import conflux.dex.tool.contract.BoomflowContract;
-import conflux.web3j.Account;
 import conflux.web3j.Cfx;
 import conflux.web3j.RpcException;
 import conflux.web3j.contract.diagnostics.Recall;
@@ -191,6 +190,13 @@ public class SystemController {
 	@AuthRequire
 	public Settleable[] listOffChainTx() {
 		return SpringTool.getBean(BlockchainSettlementService.class).getTasks();
+	}
+
+	@GetMapping("/tx/handling")
+	@AuthRequire
+	public Settleable getHandlingTx() {
+		BlockchainSettlementService bean = SpringTool.getBean(BlockchainSettlementService.class);
+		return bean.getHandlingData();
 	}
 
 	/**

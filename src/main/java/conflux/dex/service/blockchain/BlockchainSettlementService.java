@@ -3,14 +3,17 @@ package conflux.dex.service.blockchain;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 import javax.annotation.PostConstruct;
 
 import conflux.dex.service.NonceKeeper;
 import conflux.dex.tool.CfxTxSender;
-import conflux.dex.tool.SpringTool;
 import conflux.web3j.AMNAccount;
+import conflux.web3j.RpcException;
+import conflux.web3j.response.Receipt;
+import conflux.web3j.response.UsedGasAndCollateral;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +48,7 @@ import conflux.web3j.types.SendTransactionResult;
 
 @Service
 public class BlockchainSettlementService extends BatchWorker<Settleable> {
+	public static final String KEY_TX_WAIT_EXEC = "tx.wait.exec";
 	private static final Logger logger = LoggerFactory.getLogger(BlockchainSettlementService.class);
 	
 	private static final QueueMetric queue = Metrics.queue(BlockchainSettlementService.class);
@@ -60,6 +64,7 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 	
 	private BlockchainConfig config;
 	private FeeService feeService;
+	private EvmTxService evmTxService;
 
 	@Autowired
 	public BlockchainSettlementService(ExecutorService executor, DexDao dao,
@@ -109,7 +114,11 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 	public void setTxRelayer(TransactionRelayer txRelayer) {
 		this.txRelayer = txRelayer;
 	}
-	
+
+	@Autowired
+	public void setEvmTxService(EvmTxService svc) {
+		this.evmTxService = svc;
+	}
 	@Override
 	public void submit(Settleable data) {
 		if (this.config.enabled) {
@@ -188,10 +197,11 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		}
 		
 		TransactionRecorder recorder = data.getRecorder();
-		
+		String txHash = null;
 		if (recorder == null) {
 			// settle for the first time
 			this.sendTransaction(data, context);
+			txHash = data.getSettledTxHash();
 		} else if (recorder.getLast().error == null && this.isSettledOnChain(recorder.getLast().txHash)) {
 			// Service restarted and last item already settled on chain,
 			// just mark it as OnChainSettled
@@ -201,13 +211,52 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 			// 2. service restarted and last item not settled on chain yet
 			this.validateNonce(data, false);
 			this.sendTransaction(data, context);
+			txHash = data.getSettledTxHash();
 		}
 		
 		data.updateSettlement(this.dao, SettlementStatus.OnChainSettled);
 		
 		this.monitor.add(data);
+
+		if (txHash != null) {
+			waitTxExecuted(data);
+		}
 	}
-	
+
+	private void waitTxExecuted(Settleable data) {
+		String txHash = data.getSettledTxHash();
+		while (true) {
+			// maybe it has been paused by tx monitor already.
+			if (this.healthService.isPausedBy(PauseSource.Blockchain)) {
+				break;
+			}
+			if (TransactionRecorder.Error.TxDiscarded.equals(data.getRecorder().getLast().error)) {
+				// tx monitor may set the error to `TxDiscarded`, and fire an event in order to resubmit this tx.
+				break;
+			}
+			Optional<Receipt> opt;
+			try {
+				opt = this.blockchain.getAdmin().getCfx().getTransactionReceipt(txHash).sendAndGet();
+			} catch (RpcException e) {
+				logger.error("rpc exception while fetching tx receipt, tx {}", txHash, e);
+				opt = Optional.empty();
+			}
+			// not executed, or failed
+			if (!opt.isPresent() || opt.get().getOutcomeStatus() != 0) {
+				try {
+					//noinspection BusyWait
+					Thread.sleep(1_000);
+				} catch (InterruptedException e) {
+					break;
+				}
+				continue;
+			}
+			// If the transaction fails, the transaction monitor will pause the system,
+			// the next loop will break by checking pause source, do nothing here.
+			break;
+		}
+	}
+
 	private boolean isSettledOnChain(String txHash) {
 		return this.blockchain.getAdmin().getCfx().getTransactionByHash(txHash).sendAndGet().isPresent();
 	}
@@ -252,7 +301,15 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		BigInteger epoch = this.heartBeatService == null
 				? admin.getCfx().getEpochNumber().sendAndGet()
 				: this.heartBeatService.getCurrentEpoch();
-		RawTransaction tx = RawTransaction.call(nonce, context.gasLimit, context.contract, context.storageLimit, epoch, context.data);
+		BigInteger gasLimit = context.gasLimit;
+		RawTransaction tx = RawTransaction.call(nonce, gasLimit, context.contract, context.storageLimit, epoch, context.data);
+		if (this.dao.getIntConfig(KEY_TX_WAIT_EXEC, 0) == 1) {
+			UsedGasAndCollateral estimate = GasTool.estimate(tx, admin.getAddress(), admin.getCfx());
+			if (estimate != null) {
+				logger.debug("use estimated gas {}, original {}, for {} id {}", estimate.getGasLimit(), gasLimit, data.getClass().getSimpleName(), data.getId());
+				gasLimit = estimate.getGasLimit();
+			}
+		}
 
 		BigInteger gasPrice = BlockchainConfig.instance.txGasPrice;
 		if (resendOnError) {
@@ -266,9 +323,9 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 
 		String[] txInfo;
 		if (this.config.evm) {
-			txInfo = SpringTool.getBean(EvmTxService.class).buildTx(context.contract.getHexAddress(), nonce, context.data, gasPrice, context.gasLimit);
+			txInfo = evmTxService.buildTx(context.contract.getHexAddress(), nonce, context.data, gasPrice, gasLimit);
 		} else {
-			txInfo = CfxTxSender.buildTx(admin, context.contract, nonce, epoch, context.data, gasPrice, context.gasLimit, context.storageLimit);
+			txInfo = CfxTxSender.buildTx(admin, context.contract, nonce, epoch, context.data, gasPrice, gasLimit, context.storageLimit);
 		}
 		String signedTx = txInfo[0];
 		String txHash = txInfo[1];

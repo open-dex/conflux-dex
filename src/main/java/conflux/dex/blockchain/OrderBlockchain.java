@@ -125,7 +125,7 @@ public class OrderBlockchain implements InfluxDBReportable {
 				return;
 			}
 			retryTimes --;
-		} while (retryTimes > 0);
+		} while (retryTimes >= 0);
 
 //		if (onChainNonce.add(this.config.adminMaxNonceFuture).compareTo(offChainNonce) < 0) {
 //			String error = String.format("too many txs pending in txpool, onChainNonce = %s, offChainNonce = %s, maxTooFuture = %s",
