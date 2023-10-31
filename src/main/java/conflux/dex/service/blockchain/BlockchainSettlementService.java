@@ -227,7 +227,7 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 		String txHash = data.getSettledTxHash();
 		while (true) {
 			// maybe it has been paused by tx monitor already.
-			if (this.healthService.getPauseSource().isPresent()) {
+			if (this.healthService.isPausedBy(PauseSource.Blockchain)) {
 				break;
 			}
 			if (TransactionRecorder.Error.TxDiscarded.equals(data.getRecorder().getLast().error)) {
@@ -251,7 +251,8 @@ public class BlockchainSettlementService extends BatchWorker<Settleable> {
 				}
 				continue;
 			}
-			// transaction monitor will pause system if tx failed, do nothing here.
+			// If the transaction fails, the transaction monitor will pause the system,
+			// the next loop will break by checking pause source, do nothing here.
 			break;
 		}
 	}
