@@ -68,7 +68,7 @@ class MessageSender extends SequentialWorker<TopicResponse> implements Subscribe
 			tpsIoError.mark();
 			this.close();
 		} catch (Exception e) {
-			logger.debug("failed to send message (Other)", e);
+			logger.error("failed to send message (Other)", e);
 			tpsError.mark();
 			this.close();
 		}

@@ -118,6 +118,7 @@ echo "Database is ${DB}"
 echo -e "USE ${DB};" > $SETUP_ASSET_SQL_FILE
 echo -e "SET FOREIGN_KEY_CHECKS=0;" >> $SETUP_ASSET_SQL_FILE
 echo -e "" >> $SETUP_ASSET_SQL_FILE
+echo -e "insert into t_config values('blockchain.event.epoch', '$epochNum');" >> $SETUP_ASSET_SQL_FILE
 
 echo -e "REPLACE INTO t_product (id, name, base_currency_id, quote_currency_id, price_precision, amount_precision, funds_precision, min_order_amount, max_order_amount, min_order_funds, instant_exchange, base_product_id, quote_product_id, base_is_base_side, quote_is_base_side) VALUES" >> $SETUP_ASSET_SQL_FILE
 if [ "$PROFILE" == "prod" ]; then
