@@ -1,11 +1,20 @@
 package conflux.dex.tool;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ser.FilterProvider;
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import conflux.dex.common.Utils;
 import conflux.dex.controller.AddressTool;
-import conflux.dex.model.EIP712Data;
+import conflux.dex.model.*;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.web.client.RestTemplate;
 
 import conflux.dex.blockchain.TypedWithdraw;
@@ -21,11 +30,6 @@ import conflux.dex.controller.request.DailyLimitRateRequest;
 import conflux.dex.controller.request.DailyLimitRequest;
 import conflux.dex.controller.request.SystemCommand;
 import conflux.dex.controller.request.WithdrawRequest;
-import conflux.dex.model.Account;
-import conflux.dex.model.Currency;
-import conflux.dex.model.Product;
-import conflux.dex.model.User;
-import conflux.dex.model.WithdrawRecord;
 import conflux.dex.service.PlaceOrderRequest;
 import conflux.web3j.AccountManager;
 
@@ -58,6 +62,7 @@ public class Client {
 	
 	public Optional<Currency> getCurrency(String name) {
 		String url = String.format("%s/currencies/%s", this.url, name);
+		System.out.println("getCurrency from "+url);
 		Response response = this.rest.getForObject(url, Response.class);
 		return response.getEntity(Currency.class, BusinessFault.CurrencyNotFound);
 	}
@@ -148,6 +153,48 @@ public class Client {
 		String url = String.format("%s/system/orders/cancel", this.url);
 		Response response = this.rest.postForObject(url, request, Response.class);
 		response.ensureSucceeded();
+	}
+
+	public void cancelOrder(long id, long timestamp, String sign) {
+		String url = String.format("%s/orders/%s/cancel", this.url, id);
+		CancelOrderRequest request = CancelOrderRequest.fromUser(id, timestamp, sign);
+		Response response = this.rest.postForObject(url, request, Response.class);
+		System.out.println("cancel order result : "+response);
+	}
+
+	public Order getOrder(long id) {
+		String url = String.format("%s/orders/%s", this.url, id);
+
+		Response response = this.rest.getForObject(url, Response.class);
+		ObjectMapper mapper = buildOrderMapper();
+
+		return mapper.convertValue(response.getData(), Order.class);
+	}
+
+	@NotNull
+	private static ObjectMapper buildOrderMapper() {
+		ObjectMapper mapper = new ObjectMapper();
+
+		SimpleBeanPropertyFilter theFilter = SimpleBeanPropertyFilter
+				.serializeAllExcept("holdAmount");
+		FilterProvider filter = new SimpleFilterProvider()
+				.addFilter("myFilter", theFilter);
+
+		mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+		return mapper;
+	}
+
+	public List<Order> getOrders(String addr) {
+		String url = String.format("%s/orders/incompleted?address=%s", this.url, addr);
+
+		Response response = this.rest.getForObject(url, Response.class);
+		ObjectMapper mapper = buildOrderMapper();
+		if (!response.isSuccess()) {
+			System.out.println(url + " failed " + response);
+			return Collections.emptyList();
+		}
+//		System.out.println(url + " order data:"+response.getData());
+		return mapper.convertValue(response.getData(), new TypeReference<List<Order>>(){});
 	}
 	
 	public void withdraw(WithdrawRequest requestWithoutSignature, AccountManager am, String... password) throws Exception {

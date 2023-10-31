@@ -1,14 +1,20 @@
 package conflux.dex.tool;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import conflux.dex.blockchain.TypedOrderCancellation;
 import conflux.dex.controller.AddressTool;
+import conflux.dex.model.*;
+import conflux.dex.model.Currency;
 import conflux.web3j.CfxUnit;
 import conflux.web3j.types.CfxAddress;
 import conflux.web3j.types.SendTransactionResult;
@@ -37,10 +43,6 @@ import conflux.dex.blockchain.CfxBuilder;
 import conflux.dex.blockchain.TypedOrder;
 import conflux.dex.blockchain.crypto.Domain;
 import conflux.dex.common.Utils;
-import conflux.dex.model.Account;
-import conflux.dex.model.Currency;
-import conflux.dex.model.Product;
-import conflux.dex.model.User;
 import conflux.dex.service.PlaceOrderRequest;
 import conflux.web3j.Account.Option;
 import conflux.web3j.AccountManager;
@@ -158,13 +160,42 @@ public class OrderBot {
 		if (this.context.cfx.isPresent()) {
 			this.debugBalance();
 		}
-
+		BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
 		do {
-			placeOrder();
-			System.out.println("\n\nPress q to quit, [Enter] to run again:");
-			int in = System.in.read();
+			System.out.println("\n\nPress q to quit, [Enter] to run again:" + orderMod.name() + " : " + new Date());
+			String cmd = r.readLine();
+			System.out.println("cmd "+cmd);
+			if (cmd.isEmpty()) {
+				placeOrder();
+				continue;
+			}
+			int in = cmd.charAt(0);
 			if (in == 'q') {
 				break;
+			} else if (in == 'b') {
+				orderMod = OrderMode.OnlyBuy;
+				placeOrder();
+			} else if (in == 't') { //trade
+				orderMod = OrderMode.Both;
+				placeOrder();
+			} else if (in == 'c') {
+				traders.getUsers().forEach(user->{
+					List<Order> orders = this.context.dexClient.getOrders(user.getName());
+					if (orders.isEmpty()) {
+						return;
+					}
+					System.out.println("orders "+orders.stream().map(o->""+o.getId()).collect(Collectors.joining(",")));
+					orders.stream().forEach(o-> {
+						try {
+							cancelOrders(user, o.getId());
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					});
+				});
+			} else if (in == 's') {
+				orderMod = OrderMode.OnlySell;
+				placeOrder();
 			}
 		} while(true);
 	}
@@ -240,18 +271,42 @@ public class OrderBot {
 				BigDecimal.valueOf(this.amountBaseline),
 				BigDecimal.valueOf(rand.nextInt(this.amountMultipleMax) + 1),
 				this.productFactory.product.getAmountPrecision());
+		long orderId1 = 0;
 		if (orderMod.equals(OrderMode.Both) || orderMod.equals(OrderMode.OnlyBuy)) {
 			PlaceOrderRequest o1 = PlaceOrderRequest.limitBuy(buyer.getName(), this.productFactory.product.getName(), price, amount);
 			o1.setSignature(this.sign(o1, buyer));
-			this.context.dexClient.placeOrder(o1);
+			orderId1 = this.context.dexClient.placeOrder(o1);
+			System.out.println("buy order id " + orderId1);
 		}
 		if (orderMod.equals(OrderMode.Both) || orderMod.equals(OrderMode.OnlySell)) {
+			if (orderMod.equals(OrderMode.Both)) {
+				System.out.println(amount);
+				amount = amount.divide(BigDecimal.valueOf(2))
+						.setScale(this.productFactory.product.getAmountPrecision(), RoundingMode.DOWN)
+						.stripTrailingZeros();
+				System.out.println(amount);
+			}
 			PlaceOrderRequest o2 = PlaceOrderRequest.limitSell(seller.getName(), this.productFactory.product.getName(), price, amount);
 			o2.setSignature(this.sign(o2, seller));
-			this.context.dexClient.placeOrder(o2);
+			long id = this.context.dexClient.placeOrder(o2);
+			System.out.println("sell order id " + id);
+			//
+			if (orderMod.equals(OrderMode.Both)) {
+				Thread.sleep(1_000);
+				cancelOrders(buyer, orderId1);
+			}
 		}
 	}
-	
+
+	private void cancelOrders(User seller, long id) throws Exception {
+		Order order = this.context.dexClient.getOrder(id);
+		TypedOrder typedOrder = TypedOrder.from(order, seller.getName(), this.productFactory.btc, this.productFactory.usdt);
+		TypedOrderCancellation typedOrderCancellation = new TypedOrderCancellation(typedOrder, System.currentTimeMillis());
+		String sign = this.context.am.signMessage(typedOrderCancellation.hash(), false, AddressTool.address(seller.getName()));
+		this.context.dexClient.cancelOrder(id, typedOrderCancellation.nonce, sign);
+		System.out.println("order canceled " + id);
+	}
+
 	private String sign(PlaceOrderRequest request, User user) throws Exception {
 		request.setTimestamp(System.currentTimeMillis());
 		request.setFeeAddress(FEE_ADDRESS);
