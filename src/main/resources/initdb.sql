@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS t_currency (
 	token_address VARCHAR(64) NOT NULL UNIQUE comment 'token contract address',
 	decimal_digits INT NOT NULL,
 	cross_chain BOOLEAN NOT NULL,
+    disabled BOOLEAN NOT NULL DEFAULT false,
 	minimum_withdraw_amount DECIMAL(32,18) NOT NULL,
 	PRIMARY KEY (id)
 ) ENGINE=InnoDB;

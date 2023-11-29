@@ -60,6 +60,9 @@ public class Currency {
 	 * which is allowed to withdraw to the original chain.
 	 */
 	private boolean crossChain;
+
+	private boolean disabled;
+
 	/**
 	 * Minimum withdraw amount.
 	 */
@@ -169,4 +172,13 @@ public class Currency {
 	public void setMinimumWithdrawAmount(BigDecimal minimumWithdrawAmount) {
 		this.minimumWithdrawAmount = minimumWithdrawAmount;
 	}
+
+	public boolean isDisabled() {
+		return disabled;
+	}
+
+	public void setDisabled(boolean disabled) {
+		this.disabled = disabled;
+	}
+
 }

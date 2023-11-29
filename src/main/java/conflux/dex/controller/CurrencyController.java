@@ -183,12 +183,16 @@ public class CurrencyController {
 	 */
 	@GetMapping
 	public CurrencyPagingResult list(
+			@RequestParam(required = false, defaultValue = "true") boolean filter,
 			@RequestParam(required = false, defaultValue = "0") int offset, 
 			@RequestParam(required = false, defaultValue = "10") int limit) {
 		Validators.validatePaging(offset, limit, 50);
-		
-		PagingResult<Currency> result = PagingResult.fromList(offset, limit, this.dao.listCurrencies());
-		
+
+		List<Currency> all = this.dao.listCurrencies();
+		if (filter) {
+			all = all.stream().filter(product -> !product.isDisabled()).collect(Collectors.toList());
+		}
+		PagingResult<Currency> result = PagingResult.fromList(offset, limit, all);
 		return new CurrencyPagingResult(result, this.shuttleflow);
 	}
 
